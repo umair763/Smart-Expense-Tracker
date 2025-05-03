@@ -1,0 +1,72 @@
+.
+├── client
+│   ├── node_modules
+│   ├── src
+│   │   ├── assets
+│   │   ├── components
+│   │   |   ├── Dashboard
+│   │   │   |   └── AvaiableBalanceCard.jsx
+│   │   │   |   └── Catagories.jsx
+│   │   │   |   └── IncomeAndSpendings.jsx
+│   │   │   |   └── MonthlyReportBarGraph.jsx
+│   │   │   |   └── TrackFinance.jsx
+│   │   │   |   └── WeeklyReportBarGraph.jsx
+│   │   |   ├── Expenses
+│   │   │   |   └── AddExpenseAndReport.jsx
+│   │   │   |   └── AddExpenseForm.jsx
+│   │   │   |   └── ExpenseRecord.jsx
+│   │   |   ├── Income
+│   │   │   |   └── AddIncomeAndReport.jsx
+│   │   │   |   └── AddIncomeForm.jsx
+│   │   │   |   └── IncomeCategories.jsx
+│   │   │   |   └── IncomeRecord.jsx
+│   │   |   ├── LoginRegisteration
+│   │   │   |   └── GogoleSignin.jsx
+│   │   │   |   └── Login.jsx
+│   │   │   |   └── Registeration.jsx
+│   │   |   ├── Transactions
+│   │   │   |   └── AddTransactionAndReport.jsx
+│   │   │   |   └── AddTransactionForm.jsx
+│   │   │   |   └── TransactionReport.jsx
+│   │   │   └── MainDashboard.jsx
+│   │   │   └── MainExpenses.jsx
+│   │   │   └── MainTransaction.jsx
+│   │   │   └── MainIncome.jsx
+│   │   │   └── SideBar.jsx
+│   │   │   └── ThemeContext.jsx
+│   │   │   └── ThemeToggle.jsx
+│   │   └── App.css
+│   │   └── App.jsx
+│   │   └── index.css
+│   │   └── main.jsx
+│   └── .env
+│   └── .gitignore
+│   └── index.html
+│   └── package-lock.json
+│   └── package.json
+│   └── postcss.config.js
+│   └── tailwind.config.js
+│   └── vite.config.js
+├── server
+│   ├── controllers
+│   │   └── ExpenseControllers.js
+│   │   └── IncomeControllers.js
+│   │   └── TransactionControllers.js
+│   │   └── UserControllers.js
+│   ├── middleware
+│   │   └── auth.js
+│   ├── models
+│   │   └── ExpenseModels.js
+│   │   └── IncomeModels.js
+│   │   └── TransactionModels.js
+│   │   └── UserModels.js
+│   ├── routes
+│   │   └── ExpenseRoutes.js
+│   │   └── IncomeRoutes.js
+│   │   └── TransactionRoutes.js
+│   │   └── UserRoutes.js
+│   └── index.js
+│   └── .env
+│   └── .gitignore
+│   └── package-lock.json
+│   └── package.json

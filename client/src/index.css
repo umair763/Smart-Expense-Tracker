@@ -1,0 +1,21 @@
+/* App.css or index.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Additional global styles that should apply before Tailwind */
+:root {
+   --primary-color: #3b82f6;
+   --secondary-color: #6b7280;
+   --background-light: #f9fafb;
+   --background-dark: #1f2937;
+   --text-light: #374151;
+   --text-dark: #f3f4f6;
+}
+
+/* Ensure proper height for app */
+html,
+body,
+#root {
+   height: 100%;
+}
