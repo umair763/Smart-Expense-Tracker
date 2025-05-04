@@ -53,6 +53,11 @@ const incomeSchema = new mongoose.Schema(
 	}
 );
 
+// Add indexes for better query performance
+incomeSchema.index({ userId: 1 });
+incomeSchema.index({ userId: 1, date: 1 });
+incomeSchema.index({ userId: 1, category: 1 });
+
 const Income = mongoose.model("Income", incomeSchema);
 
 export default Income;

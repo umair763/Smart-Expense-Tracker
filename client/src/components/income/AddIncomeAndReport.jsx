@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
+import { FaMoneyBillWave, FaChartLine, FaPlus } from 'react-icons/fa';
+import { ThemeContext } from '../../app/context/ThemeContext';
 import AddIncomeForm from './AddIncomeForm';
 
 function AddIncomeAndReport() {
@@ -9,6 +11,7 @@ function AddIncomeAndReport() {
    });
    const [isLoading, setIsLoading] = useState(true);
    const [error, setError] = useState(null);
+   const { isDarkMode } = useContext(ThemeContext);
 
    useEffect(() => {
       fetchIncomeStats();
@@ -77,23 +80,64 @@ function AddIncomeAndReport() {
    };
 
    return (
-      <div className="mt-8 p-6 bg-slate-200 text-black dark:bg-[#00203FFF] dark:text-white rounded-lg shadow-md">
-         <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold">Income Overview</h2>
-            <button
-               onClick={openModal}
-               className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-            >
-               Add New Income
-            </button>
+      <div className="p-6 bg-slate-200 text-black dark:bg-[#00203FFF] dark:text-white rounded-lg shadow-md">
+         <h2 className="text-xl font-semibold mb-6">Quick Access</h2>
+         <div className="flex justify-center w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
+               {/* Add New Income Button */}
+               <button
+                  className={`group flex items-center p-5 rounded-xl shadow-lg transition-all duration-300 ${
+                     isDarkMode
+                        ? 'bg-gradient-to-r from-green-900 to-teal-900 hover:from-green-800 hover:to-teal-800'
+                        : 'bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600'
+                  } transform hover:-translate-y-1`}
+                  onClick={openModal}
+               >
+                  <div
+                     className={`w-12 h-12 flex items-center justify-center text-white rounded-full 
+                     ${isDarkMode ? 'bg-green-700 group-hover:bg-green-600' : 'bg-teal-700 group-hover:bg-teal-600'}
+                     mr-4 transition-all duration-300 shadow-md`}
+                  >
+                     <FaMoneyBillWave size={18} />
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-white font-medium">New Income</span>
+                     <span className="text-xs text-green-100 opacity-80">Add a new income record</span>
+                  </div>
+                  <FaPlus className="ml-auto text-white opacity-70" />
+               </button>
+
+               {/* Create Report Button */}
+               <button
+                  className={`group flex items-center p-5 rounded-xl shadow-lg transition-all duration-300 ${
+                     isDarkMode
+                        ? 'bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800'
+                        : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
+                  } transform hover:-translate-y-1`}
+               >
+                  <div
+                     className={`w-12 h-12 flex items-center justify-center text-white rounded-full 
+                     ${isDarkMode ? 'bg-blue-700 group-hover:bg-blue-600' : 'bg-indigo-700 group-hover:bg-indigo-600'}
+                     mr-4 transition-all duration-300 shadow-md`}
+                  >
+                     <FaChartLine size={18} />
+                  </div>
+                  <div className="flex flex-col">
+                     <span className="text-white font-medium">Create Report</span>
+                     <span className="text-xs text-blue-100 opacity-80">Generate income reports</span>
+                  </div>
+                  <FaPlus className="ml-auto text-white opacity-70" />
+               </button>
+            </div>
          </div>
 
+         {/* Income stats cards */}
          {isLoading ? (
-            <p>Loading income statistics...</p>
+            <p className="mt-6">Loading income statistics...</p>
          ) : error ? (
-            <p className="text-red-500">{error}</p>
+            <p className="mt-6 text-red-500">{error}</p>
          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 mt-6">
                {/* Total Income Card */}
                <div className="bg-slate-100 dark:bg-[#0c2742] p-4 rounded-lg shadow">
                   <h3 className="text-xl font-semibold mb-2">Total Income</h3>

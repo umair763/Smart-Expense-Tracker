@@ -15,7 +15,7 @@ const expenseSchema = new mongoose.Schema(
 				"Transportation",
 				"Food",
 				"Healthcare",
-				"PersonalCare", 
+				"PersonalCare",
 				"Entertainment",
 				"Education",
 				"FinancialObligations",
@@ -39,6 +39,11 @@ const expenseSchema = new mongoose.Schema(
 		timestamps: true,
 	}
 );
+
+// Add indexes for better query performance
+expenseSchema.index({ userId: 1 });
+expenseSchema.index({ userId: 1, category: 1 });
+expenseSchema.index({ userId: 1, recordedDate: 1 });
 
 const Expense = mongoose.model("Expense", expenseSchema);
 

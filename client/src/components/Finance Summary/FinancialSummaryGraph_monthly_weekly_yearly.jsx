@@ -229,14 +229,14 @@ function FinancialSummaryGraph_monthly_weekly_yearly({ timeFilter, summaryData }
       );
    }
 
-   return (
+  return (
       <div className="p-4">
          <h2 className="text-xl font-semibold mb-4">Financial Summary Graph</h2>
          <div className="h-80">
             <Bar data={chartData} options={options} />
          </div>
       </div>
-   );
+  );
 }
 
 export default FinancialSummaryGraph_monthly_weekly_yearly;

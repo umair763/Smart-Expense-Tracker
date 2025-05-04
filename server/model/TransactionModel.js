@@ -21,4 +21,11 @@ const TransactionSchema = new mongoose.Schema(
 	{ timestamps: true }
 );
 
-export default mongoose.model("Transaction", TransactionSchema);
+// Add indexes for better query performance
+TransactionSchema.index({ userId: 1 });
+TransactionSchema.index({ userId: 1, date: -1 });
+TransactionSchema.index({ userId: 1, status: 1 });
+
+const Transaction = mongoose.model("Transaction", TransactionSchema);
+
+export default Transaction;
