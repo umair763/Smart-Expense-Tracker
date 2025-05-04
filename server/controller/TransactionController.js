@@ -1,5 +1,6 @@
 import Transaction from "../model/TransactionModel.js";
 import mongoose from "mongoose";
+import { dbEvents } from "../index.js";
 const { ObjectId } = mongoose.Types;
 
 // Get all transactions with pagination
@@ -138,6 +139,13 @@ export const createTransaction = async (req, res) => {
 
 		await newTransaction.save();
 
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "transactions",
+			documentId: newTransaction._id,
+		});
+
 		console.log("Transaction created successfully:", newTransaction._id);
 		res.status(201).json({
 			message: "Transaction created successfully",
@@ -203,6 +211,13 @@ export const updateTransaction = async (req, res) => {
 			{ new: true, runValidators: true } // Return the updated doc and run validators
 		);
 
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "update",
+			collection: "transactions",
+			documentId: transactionId,
+		});
+
 		console.log("Transaction updated successfully");
 		res.status(200).json({
 			message: "Transaction updated successfully",
@@ -255,6 +270,13 @@ export const deleteTransaction = async (req, res) => {
 
 		// Delete the transaction
 		await Transaction.findByIdAndDelete(transactionId);
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "transactions",
+			documentId: transactionId,
+		});
 
 		console.log("Transaction deleted successfully");
 		res.status(200).json({

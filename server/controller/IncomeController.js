@@ -1,5 +1,6 @@
 import Income from "../model/IncomeModel.js";
 import mongoose from "mongoose";
+import { dbEvents } from "../index.js";
 
 // Add new income
 export const addIncome = async (req, res) => {
@@ -62,6 +63,13 @@ export const addIncome = async (req, res) => {
 
 		// Save the income to the database
 		await newIncome.save();
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "incomes",
+			documentId: newIncome._id,
+		});
 
 		// Return a success response
 		return res.status(201).json({ message: "Income added successfully.", income: newIncome });
@@ -137,6 +145,14 @@ export const deleteIncome = async (req, res) => {
 
 		// Delete the income
 		await Income.findByIdAndDelete(id);
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "incomes",
+			documentId: id,
+		});
+
 		res.json({ message: "Income deleted successfully" });
 	} catch (err) {
 		console.error("Error deleting income:", err);
@@ -261,6 +277,13 @@ export const updateIncome = async (req, res) => {
 		const updatedIncome = await Income.findByIdAndUpdate(id, updateData, {
 			new: true,
 			runValidators: true,
+		});
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "update",
+			collection: "incomes",
+			documentId: id,
 		});
 
 		console.log("Income updated successfully");

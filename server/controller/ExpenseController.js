@@ -1,4 +1,5 @@
 import Expense from "../model/ExpenseModel.js";
+import { dbEvents } from "../index.js";
 
 // Add new expense
 export const addExpense = async (req, res) => {
@@ -25,6 +26,13 @@ export const addExpense = async (req, res) => {
 
 		// Save the expense to the database
 		await newExpense.save();
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "expenses",
+			documentId: newExpense._id,
+		});
 
 		// Return a success response
 		res.status(201).json({ message: "Expense added successfully.", expense: newExpense });
@@ -94,6 +102,14 @@ export const deleteExpense = async (req, res) => {
 
 		// Delete the expense
 		await Expense.findByIdAndDelete(id);
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "expenses",
+			documentId: id,
+		});
+
 		console.log("Expense deleted successfully");
 		res.json({ message: "Expense deleted successfully" });
 	} catch (err) {
@@ -160,6 +176,13 @@ export const updateExpense = async (req, res) => {
 			const updatedExpense = await Expense.findByIdAndUpdate(id, updateData, {
 				new: true,
 				runValidators: true,
+			});
+
+			// Emit event for the notification system : Trigger
+			dbEvents.emit("db_change", {
+				operation: "update",
+				collection: "expenses",
+				documentId: id,
 			});
 
 			console.log("Expense updated successfully");

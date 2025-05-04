@@ -7,10 +7,48 @@ import expenseRoutes from "./routes/ExpenseRoutes.js";
 import transactionRoutes from "./routes/TransactionRoutes.js";
 import incomeRoutes from "./routes/IncomeRoutes.js";
 import financeSummaryRoutes from "./routes/FinanceSummaryRoutes.js";
+import { Server } from "socket.io";
+import http from "http";
+import { EventEmitter } from "events";
+
+// Create a global event emitter for database changes
+export const dbEvents = new EventEmitter();
 
 dotenv.config(); // This will load variables from your .env file
 
 const app = express();
+const server = http.createServer(app);
+
+// Set up Socket.IO
+const io = new Server(server, {
+	cors: {
+		origin: "http://localhost:5173", // Match your frontend URL
+		methods: ["GET", "POST"],
+		credentials: true,
+	},
+});
+
+// Socket.IO connection handling
+io.on("connection", (socket) => {
+	console.log("Client connected:", socket.id);
+
+	socket.on("disconnect", () => {
+		console.log("Client disconnected:", socket.id);
+	});
+});
+
+// Listen for database events and emit notifications
+dbEvents.on("db_change", (changeData) => {
+	console.log(`Database change detected:`, changeData);
+
+	// Emit to all connected clients
+	io.emit("notification", {
+		type: changeData.operation,
+		collection: changeData.collection,
+		message: `Record ${changeData.operation} on ${changeData.collection}`,
+		timestamp: new Date(),
+	});
+});
 
 // Middleware
 app.use(
@@ -41,7 +79,9 @@ app.use(
 // Database Connection
 mongoose
 	.connect(process.env.MONGO_URI)
-	.then(() => console.log("MongoDB connected"))
+	.then(() => {
+		console.log("MongoDB connected");
+	})
 	.catch((err) => console.error("MongoDB connection error:", err));
 
 // Add route debugging
@@ -149,4 +189,4 @@ app.use((req, res) => {
 
 // Start Server
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -12,9 +12,19 @@ export default {
 					"0%": { opacity: "0", transform: "scale(0.95) translateY(10px)" },
 					"100%": { opacity: "1", transform: "scale(1) translateY(0)" },
 				},
+				slideIn: {
+					"0%": { opacity: "0", transform: "translateX(100%)" },
+					"100%": { opacity: "1", transform: "translateX(0)" },
+				},
+				slideOut: {
+					"0%": { opacity: "1", transform: "translateX(0)" },
+					"100%": { opacity: "0", transform: "translateX(100%)" },
+				},
 			},
 			animation: {
 				modalEntry: "modalEntry 0.3s ease-out forwards",
+				"slide-in": "slideIn 0.3s ease-out forwards",
+				"slide-out": "slideOut 0.3s ease-out forwards",
 			},
 		},
 		screens: {

@@ -61,7 +61,7 @@ function FinanceSummaryRecord({ timeFilter, summaryData }) {
                         </option>
                      ))}
                   </select>
-                  <FiFilter className="absolute right-2 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                  <FiFilter className="absolute right-5 top-1/2 transform -translate-y-1/2 text-gray-500" />
                </div>
             </div>
          </div>

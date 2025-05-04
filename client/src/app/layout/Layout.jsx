@@ -4,6 +4,7 @@ import Header from './Header';
 import Footer from './Footer';
 import { Outlet } from 'react-router-dom';
 import { ThemeContext } from '../context/ThemeContext';
+import NotificationSystem from '../../components/Notification/NotificationSystem';
 
 const Layout = () => {
    const [isSidebarVisible, setIsSidebarVisible] = useState(true);
@@ -54,6 +55,9 @@ const Layout = () => {
             isSidebarVisible={isSidebarVisible}
             sidebarWidth={isSmallScreen || !isSidebarVisible ? collapsedSidebarWidth : sidebarWidth}
          />
+
+         {/* Notification System */}
+         <NotificationSystem />
 
          <div className="flex flex-1 mt-16 relative">
             {/* Sidebar container with responsive width and position */}
