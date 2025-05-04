@@ -6,6 +6,7 @@ import userRoutes from "./routes/UserRoutes.js";
 import expenseRoutes from "./routes/ExpenseRoutes.js";
 import transactionRoutes from "./routes/TransactionRoutes.js";
 import incomeRoutes from "./routes/IncomeRoutes.js";
+import financeSummaryRoutes from "./routes/FinanceSummaryRoutes.js";
 
 dotenv.config(); // This will load variables from your .env file
 
@@ -63,6 +64,7 @@ app.use("/api/users", userRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/incomes", incomeRoutes);
 app.use("/api/transactions", transactionRoutes);
+app.use("/api/finance-summary", financeSummaryRoutes);
 
 // Print all registered routes for debugging
 console.log("=== REGISTERED ROUTES ===");
@@ -75,6 +77,18 @@ incomeRoutes.stack
 				.map((m) => m.toUpperCase())
 				.join(",");
 			console.log(`  ${methods} /api/incomes${r.route.path}`);
+		}
+	});
+
+console.log("/api/finance-summary routes:");
+financeSummaryRoutes.stack
+	.filter((r) => r.route)
+	.forEach((r) => {
+		if (r.route && r.route.path) {
+			const methods = Object.keys(r.route.methods)
+				.map((m) => m.toUpperCase())
+				.join(",");
+			console.log(`  ${methods} /api/finance-summary${r.route.path}`);
 		}
 	});
 console.log("========================");
@@ -99,16 +113,16 @@ app.use((req, res) => {
 	console.error(`404 ERROR: Route not found: ${req.method} ${req.originalUrl}`);
 
 	// Log all registered routes for comparison
-	console.error("Available routes: /api/users, /api/expenses, /api/incomes, /api/transactions");
-	console.error("Income routes:");
-	incomeRoutes.stack
+	console.error("Available routes: /api/users, /api/expenses, /api/incomes, /api/transactions, /api/finance-summary");
+	console.error("Finance Summary routes:");
+	financeSummaryRoutes.stack
 		.filter((r) => r.route)
 		.forEach((r) => {
 			if (r.route && r.route.path) {
 				const methods = Object.keys(r.route.methods)
 					.map((m) => m.toUpperCase())
 					.join(",");
-				console.error(`  ${methods} /api/incomes${r.route.path}`);
+				console.error(`  ${methods} /api/finance-summary${r.route.path}`);
 			}
 		});
 
@@ -117,11 +131,18 @@ app.use((req, res) => {
 		success: false,
 		message: `Route not found: ${req.method} ${req.originalUrl}`,
 		availableRoutes: [
+			// Income routes
 			{ method: "GET", path: "/api/incomes" },
 			{ method: "POST", path: "/api/incomes" },
 			{ method: "GET", path: "/api/incomes/:id" },
 			{ method: "PUT", path: "/api/incomes/:id" },
 			{ method: "DELETE", path: "/api/incomes/:id" },
+			// Finance summary routes
+			{ method: "GET", path: "/api/finance-summary" },
+			{ method: "GET", path: "/api/finance-summary/test" },
+			{ method: "GET", path: "/api/finance-summary/summary/:timeFilter" },
+			{ method: "GET", path: "/api/finance-summary/joined" },
+			{ method: "GET", path: "/api/finance-summary/aggregated" },
 		],
 	});
 });

@@ -7,6 +7,7 @@ import MainExpenses from '../pages/MainExpenses';
 import MainIncome from '../pages/MainIncome';
 import MainTransaction from '../pages/MainTransaction';
 import Layout from '../layout/Layout';
+import MainFinanceSummary from '../pages/MainFinanceSummary';
 
 const AppRoutes = () => {
    const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -39,6 +40,7 @@ const AppRoutes = () => {
                   <Route path="/income" element={<MainIncome />} />
                   <Route path="/expenses" element={<MainExpenses />} />
                   <Route path="/transactions" element={<MainTransaction />} />
+                  <Route path="/MainFinanceSummary" element={<MainFinanceSummary />} />
                </Route>
                <Route path="/" element={<Navigate to="/dashboard" />} />
                <Route path="*" element={<Navigate to="/dashboard" />} />

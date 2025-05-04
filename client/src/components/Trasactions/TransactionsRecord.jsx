@@ -701,6 +701,12 @@ const TransactionRecord = () => {
                               scope="col"
                               className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                            >
+                              Time
+                           </th>
+                           <th
+                              scope="col"
+                              className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                           >
                               Description
                            </th>
                            <th
@@ -757,7 +763,10 @@ const TransactionRecord = () => {
                                  </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                                 {transaction.date} {transaction.time && `at ${transaction.time}`}
+                                 {transaction.date}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                                 {transaction.time}
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                  {transaction.description}

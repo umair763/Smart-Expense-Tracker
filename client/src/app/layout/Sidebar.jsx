@@ -1,7 +1,13 @@
 import { useEffect, useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { FaSignOutAlt, FaUser } from 'react-icons/fa';
-import { RiDashboardLine, RiWallet3Line, RiExchangeFundsLine, RiMoneyDollarCircleLine } from 'react-icons/ri';
+import {
+   RiDashboardLine,
+   RiWallet3Line,
+   RiExchangeFundsLine,
+   RiMoneyDollarCircleLine,
+   RiBarChartBoxLine,
+} from 'react-icons/ri';
 import { ThemeContext } from '../context/ThemeContext';
 
 const Sidebar = ({ isCollapsed = false }) => {
@@ -25,6 +31,7 @@ const Sidebar = ({ isCollapsed = false }) => {
       else if (path.includes('income')) setActiveTab('income');
       else if (path.includes('expenses')) setActiveTab('expenses');
       else if (path.includes('transactions')) setActiveTab('transactions');
+      else if (path.includes('MainFinanceSummary')) setActiveTab('MainFinanceSummary');
    }, [location.pathname]);
 
    const fetchUserProfile = async () => {
@@ -162,7 +169,6 @@ const Sidebar = ({ isCollapsed = false }) => {
                   <RiMoneyDollarCircleLine className={isCollapsed ? '' : 'mr-3'} size={22} />
                   {!isCollapsed && <span className="text-base font-medium">Income</span>}
                </button>
-
                <button
                   className={`w-full flex items-center ${
                      isCollapsed ? 'justify-center' : 'justify-start px-4'
@@ -180,6 +186,24 @@ const Sidebar = ({ isCollapsed = false }) => {
                >
                   <RiExchangeFundsLine className={isCollapsed ? '' : 'mr-3'} size={22} />
                   {!isCollapsed && <span className="text-base font-medium">Transactions</span>}
+               </button>
+               <button
+                  className={`w-full flex items-center ${
+                     isCollapsed ? 'justify-center' : 'justify-start px-4'
+                  } py-3.5 rounded-lg ${
+                     activeTab === 'MainFinanceSummary'
+                        ? isDarkMode
+                           ? 'bg-gray-700 text-blue-400'
+                           : 'bg-slate-700 text-white'
+                        : isDarkMode
+                        ? 'text-gray-200 hover:bg-gray-700'
+                        : 'text-white hover:bg-blue-600'
+                  }`}
+                  onClick={() => handleTabClick('MainFinanceSummary', '/MainFinanceSummary')}
+                  title="MainFinanceSummary"
+               >
+                  <RiBarChartBoxLine className={isCollapsed ? '' : 'mr-3'} size={22} />
+                  {!isCollapsed && <span className="text-base font-medium">Financial Summary</span>}
                </button>
             </nav>
          </div>
