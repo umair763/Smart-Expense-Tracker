@@ -7,7 +7,7 @@ const Footer = () => {
    const currentYear = new Date().getFullYear();
 
    return (
-      <footer className={`mt-auto py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-200'}`}>
+      <footer className={`bg-gray-50 mt-auto py-3 border-t ${isDarkMode ? 'border-gray-700' : 'border-gray-300'}`}>
          <div className="w-full px-4 max-w-7xl mx-auto">
             <div className="flex justify-center items-center">
                <div className="flex items-center">
