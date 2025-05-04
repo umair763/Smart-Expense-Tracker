@@ -7,6 +7,7 @@ import expenseRoutes from "./routes/ExpenseRoutes.js";
 import transactionRoutes from "./routes/TransactionRoutes.js";
 import incomeRoutes from "./routes/IncomeRoutes.js";
 import financeSummaryRoutes from "./routes/FinanceSummaryRoutes.js";
+import expenseReportRoutes from "./routes/expenseReportRoutes.js";
 import { Server } from "socket.io";
 import http from "http";
 import { EventEmitter } from "events";
@@ -105,6 +106,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/incomes", incomeRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/finance-summary", financeSummaryRoutes);
+app.use("/api/reports", expenseReportRoutes);
 
 // Print all registered routes for debugging
 console.log("=== REGISTERED ROUTES ===");

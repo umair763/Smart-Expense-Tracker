@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { FaMoneyBillWave, FaChartLine, FaPlus } from 'react-icons/fa';
+import { FaMoneyBillWave, FaChartLine, FaPlus, FaSpinner } from 'react-icons/fa';
 import { ThemeContext } from '../../app/context/ThemeContext';
 import AddIncomeForm from './AddIncomeForm';
+import { downloadIncomeReport } from '../../services/reportService';
+import { toast } from 'react-toastify';
 
 function AddIncomeAndReport() {
    const [showModal, setShowModal] = useState(false);
+   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
    const [incomeStats, setIncomeStats] = useState({
       totalIncome: 0,
       recentIncome: [],
@@ -63,6 +66,43 @@ function AddIncomeAndReport() {
       closeModal();
    };
 
+   const handleGenerateReport = async () => {
+      if (isGeneratingReport) return; // Prevent multiple clicks
+
+      setIsGeneratingReport(true);
+      try {
+         // Get current date and 30 days ago for default date range
+         const endDate = new Date().toISOString().split('T')[0];
+         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+         // Check if token exists
+         const token = localStorage.getItem('token');
+         if (!token) {
+            toast.error('Authentication required. Please log in again.');
+            return;
+         }
+
+         console.log('Generating income report for date range:', startDate, 'to', endDate);
+
+         // Download report with last 30 days filter
+         await downloadIncomeReport({ startDate, endDate });
+         toast.success('Income report downloaded successfully!');
+      } catch (error) {
+         console.error('Error generating income report:', error);
+
+         // Handle specific error cases
+         if (error.response && error.response.status === 404) {
+            toast.warning('No income records found in the last 30 days.');
+         } else if (error.response && error.response.status === 401) {
+            toast.error('Your session has expired. Please log in again.');
+         } else {
+            toast.error(error.response?.data?.message || error.message || 'Failed to generate report');
+         }
+      } finally {
+         setIsGeneratingReport(false);
+      }
+   };
+
    // Format currency
    const formatCurrency = (amount) => {
       return new Intl.NumberFormat('en-US', {
@@ -114,19 +154,21 @@ function AddIncomeAndReport() {
                         ? 'bg-gradient-to-r from-blue-900 to-indigo-900 hover:from-blue-800 hover:to-indigo-800'
                         : 'bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600'
                   } transform hover:-translate-y-1`}
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingReport}
                >
                   <div
                      className={`w-12 h-12 flex items-center justify-center text-white rounded-full 
                      ${isDarkMode ? 'bg-blue-700 group-hover:bg-blue-600' : 'bg-indigo-700 group-hover:bg-indigo-600'}
                      mr-4 transition-all duration-300 shadow-md`}
                   >
-                     <FaChartLine size={18} />
+                     {isGeneratingReport ? <FaSpinner className="animate-spin" size={18} /> : <FaChartLine size={18} />}
                   </div>
                   <div className="flex flex-col">
                      <span className="text-white font-medium">Create Report</span>
-                     <span className="text-xs text-blue-100 opacity-80">Generate income reports</span>
+                     <span className="text-xs text-blue-100 opacity-80">Generate income CSV</span>
                   </div>
-                  <FaPlus className="ml-auto text-white opacity-70" />
+                  {!isGeneratingReport && <FaPlus className="ml-auto text-white opacity-70" />}
                </button>
             </div>
          </div>

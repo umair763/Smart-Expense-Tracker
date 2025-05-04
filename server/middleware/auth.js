@@ -11,6 +11,7 @@ const authenticator = (req, res, next) => {
 
 	try {
 		const authHeader = req.headers.authorization;
+		console.log("Auth header:", authHeader ? authHeader.substring(0, 20) + "..." : "none");
 
 		if (!authHeader) {
 			return res.status(403).json({
@@ -29,7 +30,9 @@ const authenticator = (req, res, next) => {
 		}
 
 		try {
+			console.log("Verifying token with secret:", JWT_SECRET ? "Secret present" : "No secret");
 			const decoded = jwt.verify(token, JWT_SECRET); // Verify the token
+			console.log("Token decoded successfully, user ID:", decoded.userId);
 			req.userId = decoded.userId; // Add the userId from the token to the request
 			next(); // Proceed to the next middleware/route handler
 		} catch (error) {

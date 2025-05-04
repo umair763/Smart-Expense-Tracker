@@ -1,14 +1,55 @@
 import { React, useState, useContext } from 'react';
-import { FaFileInvoiceDollar, FaChartPie, FaPlus } from 'react-icons/fa';
+import { FaFileInvoiceDollar, FaChartPie, FaPlus, FaSpinner } from 'react-icons/fa';
 import { ThemeContext } from '../../app/context/ThemeContext';
 import ExpenseFormModal from './ExpenseFormModal';
+import { downloadExpenseReport } from '../../services/reportService';
+import { toast } from 'react-toastify';
 
 const AddExpenseAndReport = () => {
    const [isAddFormVisible, setIsAddFormVisible] = useState(false);
+   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
    const { isDarkMode } = useContext(ThemeContext);
 
    const handleToggleAddExpenseForm = (prev) => {
       setIsAddFormVisible(!prev);
+   };
+
+   const handleGenerateReport = async () => {
+      if (isGeneratingReport) return; // Prevent multiple clicks
+
+      setIsGeneratingReport(true);
+      try {
+         // Get current date and 30 days ago for default date range
+         const endDate = new Date().toISOString().split('T')[0];
+         const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+
+         // Check if token exists
+         const token = localStorage.getItem('token');
+         if (!token) {
+            toast.error('Authentication required. Please log in again.');
+            return;
+         }
+
+         console.log('Generating expense report for date range:', startDate, 'to', endDate);
+
+         // Download report with last 30 days filter
+         await downloadExpenseReport({ startDate, endDate });
+         toast.success('Expense report downloaded successfully!');
+      } catch (error) {
+         console.error('Error generating expense report:', error);
+
+         // Handle specific error cases
+         if (error.response && error.response.status === 404) {
+            toast.warning('No expense records found in the last 30 days.');
+         } else if (error.response && error.response.status === 401) {
+            toast.error('Your session has expired. Please log in again.');
+            // Could redirect to login page here
+         } else {
+            toast.error(error.response?.data?.message || error.message || 'Failed to generate report');
+         }
+      } finally {
+         setIsGeneratingReport(false);
+      }
    };
 
    return (
@@ -51,6 +92,8 @@ const AddExpenseAndReport = () => {
                            ? 'bg-gradient-to-r from-purple-900 to-indigo-900 hover:from-purple-800 hover:to-indigo-800'
                            : 'bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600'
                      } transform hover:-translate-y-1`}
+                     onClick={handleGenerateReport}
+                     disabled={isGeneratingReport}
                   >
                      <div
                         className={`w-12 h-12 flex items-center justify-center text-white rounded-full 
@@ -61,13 +104,17 @@ const AddExpenseAndReport = () => {
                         }
                         mr-4 transition-all duration-300 shadow-md`}
                      >
-                        <FaChartPie size={18} />
+                        {isGeneratingReport ? (
+                           <FaSpinner className="animate-spin" size={18} />
+                        ) : (
+                           <FaChartPie size={18} />
+                        )}
                      </div>
                      <div className="flex flex-col">
                         <span className="text-white font-medium">Create Report</span>
-                        <span className="text-xs text-blue-100 opacity-80">Generate expense reports</span>
+                        <span className="text-xs text-blue-100 opacity-80">Generate expense CSV</span>
                      </div>
-                     <FaPlus className="ml-auto text-white opacity-70" />
+                     {!isGeneratingReport && <FaPlus className="ml-auto text-white opacity-70" />}
                   </button>
                </div>
             </div>
