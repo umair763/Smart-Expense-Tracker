@@ -1,18 +1,17 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
-import FinanceSummaryRecord from '../../components/Finance Summary/FinanceSummaryRecord';
-import FinancialSummaryGraph_monthly_weekly_yearly from '../../components/Finance Summary/FinancialSummaryGraph_monthly_weekly_yearly';
+import ConsolidatedFinancialTable from '../../components/Finance Summary/ConsolidatedFinancialTable';
 import FinancialSummaryReport_monthly_weekly_yearly from '../../components/Finance Summary/FinancialSummaryReport_monthly_weekly_yearly';
+import FinancialSummaryGraph_monthly_weekly_yearly from '../../components/Finance Summary/FinancialSummaryGraph_monthly_weekly_yearly';
 
 function MainFinanceSummary() {
-   const [timeFilter, setTimeFilter] = useState('week'); // week, month, year
    const [summaryData, setSummaryData] = useState(null);
    const [loading, setLoading] = useState(true);
    const [error, setError] = useState(null);
 
    useEffect(() => {
       fetchSummaryData();
-   }, [timeFilter]);
+   }, []);
 
    const fetchSummaryData = async () => {
       try {
@@ -27,20 +26,38 @@ function MainFinanceSummary() {
             return;
          }
 
-         console.log(`Fetching financial summary data with filter: ${timeFilter}`);
+         console.log('Fetching all financial summary data');
 
          try {
-            // Use summary endpoint with time filter
-            const apiUrl = `http://localhost:5000/api/finance-summary/summary/${timeFilter}`;
-
-            const response = await axios.get(apiUrl, {
-               headers: {
-                  Authorization: `Bearer ${token}`,
-               },
+            // Fetch expenses, incomes, and transactions separately to ensure complete data
+            const expenseResponse = await axios.get('http://localhost:5000/api/expenses', {
+               headers: { Authorization: `Bearer ${token}` },
             });
 
-            console.log('Financial summary data received:', response.data);
-            setSummaryData(response.data);
+            const incomeResponse = await axios.get('http://localhost:5000/api/incomes', {
+               headers: { Authorization: `Bearer ${token}` },
+            });
+
+            const transactionResponse = await axios.get('http://localhost:5000/api/transactions', {
+               headers: { Authorization: `Bearer ${token}` },
+            });
+
+            // Extract data from responses, handling both array and object formats
+            const expenses = expenseResponse.data.expenses || expenseResponse.data || [];
+            const income = incomeResponse.data.incomes || incomeResponse.data || [];
+            const transactions = transactionResponse.data.transactions || transactionResponse.data || [];
+
+            // Create combined data object
+            const combinedData = {
+               success: true,
+               name: 'User',
+               expenses,
+               income,
+               transactions,
+            };
+
+            console.log('Combined financial data:', combinedData);
+            setSummaryData(combinedData);
          } catch (apiError) {
             console.error('API error, using dummy data:', apiError);
             // Use dummy data as fallback when API fails
@@ -57,37 +74,22 @@ function MainFinanceSummary() {
 
    // Generate dummy data for UI testing when API fails
    const generateDummyData = () => {
-      console.log(`Generating dummy data for ${timeFilter} view`);
+      console.log('Generating dummy data for all time view');
       const dummyExpenses = [];
       const dummyIncome = [];
       const dummyTransactions = [];
 
       const currentDate = new Date();
-      let startDate;
-
-      // Determine date range based on timeFilter
-      switch (timeFilter) {
-         case 'week':
-            startDate = new Date(currentDate);
-            startDate.setDate(currentDate.getDate() - 7);
-            break;
-         case 'month':
-            startDate = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
-            break;
-         case 'year':
-            startDate = new Date(currentDate.getFullYear(), 0, 1);
-            break;
-         default:
-            startDate = new Date(currentDate);
-            startDate.setDate(currentDate.getDate() - 7);
-      }
+      // Set start date to 1 year ago for all data
+      const startDate = new Date(currentDate);
+      startDate.setFullYear(currentDate.getFullYear() - 1);
 
       // Generate dates between startDate and currentDate
       const datesBetween = [];
       const tempDate = new Date(startDate);
       while (tempDate <= currentDate) {
          datesBetween.push(new Date(tempDate));
-         tempDate.setDate(tempDate.getDate() + 1);
+         tempDate.setDate(tempDate.getDate() + 7); // Jump by weeks to reduce data size
       }
 
       // Generate dummy expenses
@@ -126,7 +128,6 @@ function MainFinanceSummary() {
       // Standard summary view format
       return {
          success: true,
-         timeFilter,
          name: 'Test User',
          expenses: dummyExpenses,
          income: dummyIncome,
@@ -139,34 +140,6 @@ function MainFinanceSummary() {
          <div className="mb-6">
             <div className="flex justify-between items-center mb-4">
                <h1 className="text-2xl font-bold">Financial Summary</h1>
-
-               {/* Time Filter Buttons */}
-               <div className="flex space-x-4">
-                  <button
-                     onClick={() => setTimeFilter('week')}
-                     className={`px-4 py-2 rounded-md ${
-                        timeFilter === 'week' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'
-                     }`}
-                  >
-                     Weekly
-                  </button>
-                  <button
-                     onClick={() => setTimeFilter('month')}
-                     className={`px-4 py-2 rounded-md ${
-                        timeFilter === 'month' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'
-                     }`}
-                  >
-                     Monthly
-                  </button>
-                  <button
-                     onClick={() => setTimeFilter('year')}
-                     className={`px-4 py-2 rounded-md ${
-                        timeFilter === 'year' ? 'bg-blue-500 text-white' : 'bg-gray-200 dark:bg-gray-700'
-                     }`}
-                  >
-                     Yearly
-                  </button>
-               </div>
             </div>
          </div>
 
@@ -176,24 +149,27 @@ function MainFinanceSummary() {
             </div>
          ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-               {/* Left Column */}
+               {/* Consolidated Financial Table - Takes 2 columns */}
                <div className="lg:col-span-2 space-y-6">
                   <div className="card backdrop-blur-md">
-                     <FinanceSummaryRecord timeFilter={timeFilter} summaryData={summaryData} />
-                  </div>
-                  <div className="card backdrop-blur-md">
-                     <FinancialSummaryReport_monthly_weekly_yearly timeFilter={timeFilter} summaryData={summaryData} />
+                     <ConsolidatedFinancialTable summaryData={summaryData} />
                   </div>
                </div>
 
-               {/* Right Column */}
+               {/* Right Column - Takes 1 column */}
                <div className="space-y-6">
+
+                  {/* Financial Summary Graph */}
                   <div className="card backdrop-blur-md">
-                     <FinancialSummaryGraph_monthly_weekly_yearly timeFilter={timeFilter} summaryData={summaryData} />
+                     <FinancialSummaryGraph_monthly_weekly_yearly summaryData={summaryData} />
                   </div>
                </div>
             </div>
          )}
+                  {/* Financial Summary Report */}
+                  <div className="card backdrop-blur-md">
+                     <FinancialSummaryReport_monthly_weekly_yearly summaryData={summaryData} />
+                  </div>
       </div>
    );
 }

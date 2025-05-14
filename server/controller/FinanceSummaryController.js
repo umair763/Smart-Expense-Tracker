@@ -41,8 +41,8 @@ export const getFinanceSummary = async (req, res) => {
 		// Format dates for string comparison (assuming dates are stored as strings like "YYYY-MM-DD")
 		const startDateStr = startDate.toISOString().split("T")[0];
 
-		// First, get the user details
-		const user = await User.findById(userId);
+		// First, get the user details with READ COMMITTED isolation
+		const user = await User.findById(userId, null, { readConcern: "majority" });
 		if (!user) {
 			return res.status(404).json({
 				success: false,
@@ -50,20 +50,32 @@ export const getFinanceSummary = async (req, res) => {
 			});
 		}
 
-		// Get filtered expenses, income, and transactions in parallel
+		// Get filtered expenses, income, and transactions in parallel with READ COMMITTED isolation
 		const [expenses, income, transactions] = await Promise.all([
-			Expense.find({
-				userId: userObjectId,
-				recordedDate: { $gte: startDateStr },
-			}),
-			Income.find({
-				userId: userObjectId,
-				date: { $gte: startDateStr },
-			}),
-			Transaction.find({
-				userId: userObjectId,
-				date: { $gte: startDateStr },
-			}),
+			Expense.find(
+				{
+					userId: userObjectId,
+					recordedDate: { $gte: startDateStr },
+				},
+				null,
+				{ readConcern: "majority" }
+			),
+			Income.find(
+				{
+					userId: userObjectId,
+					date: { $gte: startDateStr },
+				},
+				null,
+				{ readConcern: "majority" }
+			),
+			Transaction.find(
+				{
+					userId: userObjectId,
+					date: { $gte: startDateStr },
+				},
+				null,
+				{ readConcern: "majority" }
+			),
 		]);
 
 		// Return the data
@@ -93,8 +105,8 @@ export const getJoinedFinancialData = async (req, res) => {
 		// Convert userId to MongoDB ObjectId
 		const userObjectId = new mongoose.Types.ObjectId(userId);
 
-		// First, get the user details
-		const user = await User.findById(userId);
+		// First, get the user details with READ COMMITTED isolation
+		const user = await User.findById(userId, null, { readConcern: "majority" });
 		if (!user) {
 			return res.status(404).json({
 				success: false,
@@ -102,11 +114,11 @@ export const getJoinedFinancialData = async (req, res) => {
 			});
 		}
 
-		// Get expenses, income, and transactions in parallel for better performance
+		// Get expenses, income, and transactions in parallel for better performance with READ COMMITTED isolation
 		const [expenses, income, transactions] = await Promise.all([
-			Expense.find({ userId: userObjectId }),
-			Income.find({ userId: userObjectId }),
-			Transaction.find({ userId: userObjectId }),
+			Expense.find({ userId: userObjectId }, null, { readConcern: "majority" }),
+			Income.find({ userId: userObjectId }, null, { readConcern: "majority" }),
+			Transaction.find({ userId: userObjectId }, null, { readConcern: "majority" }),
 		]);
 
 		// Transform the data into the desired format
@@ -182,13 +194,23 @@ export const getJoinedFinancialData = async (req, res) => {
 
 // Get financial data with MongoDB's aggregation framework
 export const getAggregatedFinancialData = async (req, res) => {
+	// Start a MongoDB session for transaction
+	const session = await mongoose.startSession();
+
 	try {
+		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+		session.startTransaction({
+			readConcern: "snapshot",
+			writeConcern: { w: "majority" },
+		});
+
+		console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
 		const userId = req.userId;
 
 		// Convert userId to MongoDB ObjectId
 		const userObjectId = new mongoose.Types.ObjectId(userId);
 
-		// Get user data
+		// Get user data within the transaction
 		const userData = await User.aggregate([
 			// Match the specific user
 			{ $match: { _id: userObjectId } },
@@ -287,7 +309,11 @@ export const getAggregatedFinancialData = async (req, res) => {
 					},
 				},
 			},
-		]);
+		]).session(session); // Associate the aggregation with the session
+
+		// Commit the transaction to ensure REPEATABLE READ guarantees are maintained
+		await session.commitTransaction();
+		console.log("Transaction committed successfully");
 
 		// Handle no results case
 		if (!userData || userData.length === 0) {
@@ -298,19 +324,30 @@ export const getAggregatedFinancialData = async (req, res) => {
 					records: [],
 				},
 				message: "No financial data found for user",
+				isolationLevel: "REPEATABLE READ (snapshot)",
 			});
 		}
 
 		return res.status(200).json({
 			success: true,
 			data: userData[0],
+			isolationLevel: "REPEATABLE READ (snapshot)",
 		});
 	} catch (error) {
 		console.error("Error in MongoDB aggregation:", error);
+
+		// Abort the transaction if there's an error
+		await session.abortTransaction();
+		console.log("Transaction aborted due to error");
+
 		return res.status(500).json({
 			success: false,
 			message: "Error aggregating financial data",
 			error: error.message,
 		});
+	} finally {
+		// End the session
+		session.endSession();
+		console.log("Transaction session ended");
 	}
 };

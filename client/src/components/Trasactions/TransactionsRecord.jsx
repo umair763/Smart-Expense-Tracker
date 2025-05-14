@@ -26,7 +26,6 @@ const TransactionRecord = () => {
       id: '',
       date: '',
       time: '',
-      type: '',
       amount: '',
       status: '',
       discount: '',
@@ -271,7 +270,6 @@ const TransactionRecord = () => {
          id: transaction.id,
          date: transaction.date,
          time: transaction.time,
-         type: transaction.type,
          amount: transaction.amount,
          status: transaction.status,
          discount: transaction.discount || 0,
@@ -314,7 +312,7 @@ const TransactionRecord = () => {
       const term = searchTerm.toLowerCase();
       return (
          transaction.id.toLowerCase().includes(term) ||
-         transaction.type.toLowerCase().includes(term) ||
+         transaction.depository_institution.toLowerCase().includes(term) ||
          transaction.status.toLowerCase().includes(term) ||
          transaction.description.toLowerCase().includes(term) ||
          transaction.amount.toString().includes(term) ||
@@ -441,23 +439,6 @@ const TransactionRecord = () => {
                            />
                         </div>
                         <div>
-                           <label className="block text-sm font-medium mb-1">Type</label>
-                           <select
-                              name="type"
-                              value={formData.type}
-                              onChange={handleChange}
-                              className="w-full dark:bg-slate-700 dark:border-slate-700 border rounded-lg p-2 focus:outline-none"
-                              required
-                           >
-                              <option value="" disabled>
-                                 Select Type
-                              </option>
-                              <option value="Transfer">Transfer</option>
-                              <option value="Sale">Sale</option>
-                              <option value="Purchase">Purchase</option>
-                           </select>
-                        </div>
-                        <div>
                            <label className="block text-sm font-medium mb-1">Amount</label>
                            <input
                               type="number"
@@ -505,15 +486,30 @@ const TransactionRecord = () => {
                            />
                         </div>
                         <div>
-                           <label className="block text-sm font-medium mb-1">Depository Institute</label>
-                           <input
-                              type="text"
+                           <label className="block text-sm font-medium mb-1">Depository Institution</label>
+                           <select
                               name="depository_institution"
                               value={formData.depository_institution}
                               onChange={handleChange}
                               className="w-full dark:bg-slate-700 dark:border-slate-700 border rounded-lg p-2 focus:outline-none"
                               required
-                           />
+                           >
+                              <option value="" disabled>
+                                 Select Institution
+                              </option>
+                              <option value="Interbanking">Interbanking</option>
+                              <option value="Habib-Bank">Habib Bank</option>
+                              <option value="United-Bank">United Bank</option>
+                              <option value="MCB-Bank">MCB Bank</option>
+                              <option value="Allied-Bank">Allied Bank</option>
+                              <option value="Askari-Bank">Askari Bank</option>
+                              <option value="Meezan-Bank">Meezan Bank</option>
+                              <option value="Bank-Alfalah">Bank Alfalah</option>
+                              <option value="Faysal-Bank">Faysal Bank</option>
+                              <option value="Cash-Transaction">Cash Transaction</option>
+                              <option value="Credit-Card">Credit Card</option>
+                              <option value="Digital-Wallet">Digital Wallet</option>
+                           </select>
                         </div>
                         <div>
                            <label className="block text-sm font-medium mb-1">Description</label>
@@ -677,12 +673,6 @@ const TransactionRecord = () => {
                               scope="col"
                               className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                            >
-                              Type
-                           </th>
-                           <th
-                              scope="col"
-                              className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
-                           >
                               Amount
                            </th>
                            <th
@@ -702,6 +692,12 @@ const TransactionRecord = () => {
                               className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
                            >
                               Time
+                           </th>
+                           <th
+                              scope="col"
+                              className="px-6 py-4 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider"
+                           >
+                              Depository Institution
                            </th>
                            <th
                               scope="col"
@@ -731,19 +727,6 @@ const TransactionRecord = () => {
                               <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-800 dark:text-gray-200">
                                  {transaction.id}
                               </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
-                                 <span
-                                    className="px-2.5 py-1 rounded-full text-xs font-medium 
-                                    ${transaction.type === 'Transfer' 
-                                       ? 'bg-indigo-100 dark:bg-indigo-900/40 text-indigo-800 dark:text-indigo-300' 
-                                       : transaction.type === 'Sale' 
-                                          ? 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300'
-                                          : 'bg-orange-100 dark:bg-orange-900/40 text-orange-800 dark:text-orange-300'
-                                    }"
-                                 >
-                                    {transaction.type}
-                                 </span>
-                              </td>
                               <td className="px-6 py-4 whitespace-nowrap">
                                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
                                     ${parseFloat(transaction.amount).toFixed(2)}
@@ -767,6 +750,14 @@ const TransactionRecord = () => {
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                  {transaction.time}
+                              </td>
+                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
+                                 <span
+                                    className="px-2.5 py-1 rounded-full text-xs font-medium 
+                                    bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300"
+                                 >
+                                    {transaction.depository_institution}
+                                 </span>
                               </td>
                               <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 dark:text-gray-300">
                                  {transaction.description}

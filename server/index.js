@@ -7,7 +7,7 @@ import expenseRoutes from "./routes/ExpenseRoutes.js";
 import transactionRoutes from "./routes/TransactionRoutes.js";
 import incomeRoutes from "./routes/IncomeRoutes.js";
 import financeSummaryRoutes from "./routes/FinanceSummaryRoutes.js";
-import expenseReportRoutes from "./routes/expenseReportRoutes.js";
+import reportRoutes from "./routes/expenseReportRoutes.js";
 import { Server } from "socket.io";
 import http from "http";
 import { EventEmitter } from "events";
@@ -71,7 +71,7 @@ app.use(express.urlencoded({ extended: true }));
 // Allow your frontend's origin
 app.use(
 	cors({
-		origin: "http://localhost:5173", // Adjust according to your frontend URL
+		origin: "http://localhost:5173", // Frontend URL
 		methods: ["GET", "POST", "PUT", "DELETE"],
 		allowedHeaders: ["Content-Type", "Authorization"],
 	})
@@ -79,11 +79,20 @@ app.use(
 
 // Database Connection
 mongoose
-	.connect(process.env.MONGO_URI)
-	.then(() => {
-		console.log("MongoDB connected");
+	.connect(process.env.MONGO_URI, {
+		useNewUrlParser: true,
+		useUnifiedTopology: true,
+		serverSelectionTimeoutMS: 5000, // Timeout after 5s instead of 30s
+		socketTimeoutMS: 45000, // Close sockets after 45s of inactivity
 	})
-	.catch((err) => console.error("MongoDB connection error:", err));
+	.then(() => {
+		console.log("MongoDB Atlas connected successfully");
+	})
+	.catch((err) => {
+		console.error("MongoDB Atlas connection error:", err);
+		// Try to exit gracefully
+		process.exit(1);
+	});
 
 // Add route debugging
 app.use((req, res, next) => {
@@ -106,7 +115,7 @@ app.use("/api/expenses", expenseRoutes);
 app.use("/api/incomes", incomeRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/finance-summary", financeSummaryRoutes);
-app.use("/api/reports", expenseReportRoutes);
+app.use("/api/reports", reportRoutes);
 
 // Print all registered routes for debugging
 console.log("=== REGISTERED ROUTES ===");
@@ -133,6 +142,19 @@ financeSummaryRoutes.stack
 			console.log(`  ${methods} /api/finance-summary${r.route.path}`);
 		}
 	});
+
+console.log("/api/reports routes:");
+reportRoutes.stack
+	.filter((r) => r.route)
+	.forEach((r) => {
+		if (r.route && r.route.path) {
+			const methods = Object.keys(r.route.methods)
+				.map((m) => m.toUpperCase())
+				.join(",");
+			console.log(`  ${methods} /api/reports${r.route.path}`);
+		}
+	});
+
 console.log("========================");
 
 // Global error handler middleware
@@ -155,18 +177,9 @@ app.use((req, res) => {
 	console.error(`404 ERROR: Route not found: ${req.method} ${req.originalUrl}`);
 
 	// Log all registered routes for comparison
-	console.error("Available routes: /api/users, /api/expenses, /api/incomes, /api/transactions, /api/finance-summary");
-	console.error("Finance Summary routes:");
-	financeSummaryRoutes.stack
-		.filter((r) => r.route)
-		.forEach((r) => {
-			if (r.route && r.route.path) {
-				const methods = Object.keys(r.route.methods)
-					.map((m) => m.toUpperCase())
-					.join(",");
-				console.error(`  ${methods} /api/finance-summary${r.route.path}`);
-			}
-		});
+	console.error(
+		"Available routes: /api/users, /api/expenses, /api/incomes, /api/transactions, /api/finance-summary, /api/reports"
+	);
 
 	res.setHeader("Content-Type", "application/json");
 	res.status(404).json({
@@ -185,6 +198,10 @@ app.use((req, res) => {
 			{ method: "GET", path: "/api/finance-summary/summary/:timeFilter" },
 			{ method: "GET", path: "/api/finance-summary/joined" },
 			{ method: "GET", path: "/api/finance-summary/aggregated" },
+			// Report routes
+			{ method: "GET", path: "/api/reports/expenses/csv" },
+			{ method: "GET", path: "/api/reports/incomes/csv" },
+			{ method: "GET", path: "/api/reports/transactions/csv" },
 		],
 	});
 });

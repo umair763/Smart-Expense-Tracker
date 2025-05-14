@@ -29,7 +29,7 @@ function TransactionGraph({ isTheme }) {
          });
          console.log('Transaction response:', response.data);
 
-         // Process the data to group by transaction type
+         // Process the data to group by depository institution
          let transactions = [];
          if (response.data && Array.isArray(response.data.transactions)) {
             transactions = response.data.transactions;
@@ -45,9 +45,9 @@ function TransactionGraph({ isTheme }) {
             console.log('No transactions found, using sample data');
             // Use sample data
             const sampleData = [
-               { name: 'Purchase', value: 300 },
-               { name: 'Sale', value: 50 },
-               { name: 'Transfer', value: 300 },
+               { name: 'Bank-Alfalah', value: 300 },
+               { name: 'Habib-Bank', value: 50 },
+               { name: 'MCB-Bank', value: 300 },
             ];
             setChartData(sampleData);
             setLoading(false);
@@ -57,31 +57,31 @@ function TransactionGraph({ isTheme }) {
          // Log transactions to debug the fields
          console.log('First transaction details:', transactions[0]);
 
-         // Aggregate transaction data by type (sum the amounts by type)
+         // Aggregate transaction data by depository_institution (sum the amounts)
          const aggregatedData = transactions.reduce((acc, transaction) => {
-            // Based on the model, we need to use 'type' field, not 'transactionType'
-            const type = transaction.type;
+            // Use depository_institution field instead of type
+            const institution = transaction.depository_institution;
             const amount = transaction.amount || 0;
 
-            if (!type) return acc;
+            if (!institution) return acc;
 
-            // Normalize type case for consistency
-            const normalizedType = type.charAt(0).toUpperCase() + type.slice(1).toLowerCase();
+            // Make institution name more readable for display
+            const displayName = institution.replace(/-/g, ' ');
 
-            if (acc[normalizedType]) {
-               acc[normalizedType] += amount;
+            if (acc[displayName]) {
+               acc[displayName] += amount;
             } else {
-               acc[normalizedType] = amount;
+               acc[displayName] = amount;
             }
             return acc;
          }, {});
 
-         console.log('Aggregated transaction data:', aggregatedData);
+         console.log('Aggregated transaction data by institution:', aggregatedData);
 
          // Prepare data for the chart
-         const data = Object.keys(aggregatedData).map((type) => ({
-            name: type,
-            value: aggregatedData[type],
+         const data = Object.keys(aggregatedData).map((institution) => ({
+            name: institution,
+            value: aggregatedData[institution],
          }));
 
          // Sort by value (highest first)
@@ -112,9 +112,9 @@ function TransactionGraph({ isTheme }) {
          // Use sample data if error occurs
          console.log('Error occurred, using sample data for transaction graph');
          const sampleData = [
-            { name: 'Purchase', value: 300 },
-            { name: 'Sale', value: 50 },
-            { name: 'Transfer', value: 300 },
+            { name: 'Bank Alfalah', value: 300 },
+            { name: 'Habib Bank', value: 50 },
+            { name: 'MCB Bank', value: 300 },
          ];
          setChartData(sampleData);
 
@@ -139,7 +139,7 @@ function TransactionGraph({ isTheme }) {
       <div className="bg-slate-200 dark:bg-slate-500 dark:text-white text-black p-6 rounded-lg shadow-md w-full">
          {/* Title and Refresh Button */}
          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-lg font-semibold">Transaction Amount by Type</h2>
+            <h2 className="text-lg font-semibold">Transaction Amount by Institution</h2>
             <button
                onClick={handleRefresh}
                className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 p-2 rounded-full hover:bg-gray-200 dark:hover:bg-slate-700 transition"

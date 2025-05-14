@@ -80,7 +80,11 @@ function ExpensesRecord() {
          });
 
          console.log('Fetched expenses data:', response.data); // Log the fetched data
-         setExpenses(response.data); // Update state with fetched expenses
+
+         // Extract expenses array from the response
+         // The server is returning { expenses: [...], isolationLevel: "..." }
+         const expensesData = response.data.expenses || response.data;
+         setExpenses(expensesData); // Update state with fetched expenses
          setError(null);
       } catch (err) {
          console.error('Error fetching expenses:', err);
@@ -234,17 +238,19 @@ function ExpensesRecord() {
    };
 
    // Filter expenses based on search term
-   const filteredExpenses = expenses.filter((expense) => {
-      if (!searchTerm) return true;
+   const filteredExpenses = Array.isArray(expenses)
+      ? expenses.filter((expense) => {
+           if (!searchTerm) return true;
 
-      const term = searchTerm.toLowerCase();
-      return (
-         expense.item.toLowerCase().includes(term) ||
-         expense.category.toLowerCase().includes(term) ||
-         expense.amount.toString().includes(term) ||
-         new Date(expense.recordedDate).toLocaleDateString().includes(term)
-      );
-   });
+           const term = searchTerm.toLowerCase();
+           return (
+              expense.item.toLowerCase().includes(term) ||
+              expense.category.toLowerCase().includes(term) ||
+              expense.amount.toString().includes(term) ||
+              new Date(expense.recordedDate).toLocaleDateString().includes(term)
+           );
+        })
+      : [];
 
    // Calculate the pagination
    const totalPages = Math.ceil(filteredExpenses.length / recordsPerPage);

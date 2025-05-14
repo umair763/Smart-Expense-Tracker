@@ -10,7 +10,6 @@ const TransactionSchema = new mongoose.Schema(
 		id: { type: String, required: true },
 		date: { type: String, required: true },
 		time: { type: String, required: true },
-		type: { type: String, required: true },
 		amount: { type: Number, required: true },
 		status: { type: String, required: true },
 		discount: { type: Number, default: 0 },

@@ -6,7 +6,6 @@ const TransactionForm = ({ onClose, onTransactionAdded }) => {
       id: '',
       date: '',
       time: '',
-      type: '',
       amount: '',
       status: '',
       discount: '',
@@ -114,23 +113,32 @@ const TransactionForm = ({ onClose, onTransactionAdded }) => {
                      </div>
                   </div>
                   <div>
-                     <label htmlFor="type" className="block text-sm font-medium mb-1">
-                        Transaction Type
+                     <label htmlFor="depository_institution" className="block text-sm font-medium mb-1">
+                        Depository Institution
                      </label>
                      <select
-                        name="type"
-                        id="type"
-                        value={formData.type}
+                        name="depository_institution"
+                        id="depository_institution"
+                        value={formData.depository_institution}
                         onChange={handleChange}
                         className="w-full dark:bg-slate-700 dark:border-slate-700 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
                         required
                      >
                         <option value="" disabled>
-                           Select Type
+                           Select Institution
                         </option>
-                        <option value="Transfer">Transfer</option>
-                        <option value="Sale">Sale</option>
-                        <option value="Purchase">Purchase</option>
+                        <option value="Interbanking">Interbanking</option>
+                        <option value="Habib-Bank">Habib Bank</option>
+                        <option value="United-Bank">United Bank</option>
+                        <option value="MCB-Bank">MCB Bank</option>
+                        <option value="Allied-Bank">Allied Bank</option>
+                        <option value="Askari-Bank">Askari Bank</option>
+                        <option value="Meezan-Bank">Meezan Bank</option>
+                        <option value="Bank-Alfalah">Bank Alfalah</option>
+                        <option value="Faysal-Bank">Faysal Bank</option>
+                        <option value="Cash-Transaction">Cash Transaction</option>
+                        <option value="Credit-Card">Credit Card</option>
+                        <option value="Digital-Wallet">Digital Wallet</option>
                      </select>
                   </div>
                   <div className="flex gap-4">
@@ -200,26 +208,6 @@ const TransactionForm = ({ onClose, onTransactionAdded }) => {
                      </div>
                   </div>
                   <div>
-                     <label htmlFor="depository_institution" className="block text-sm font-medium mb-1">
-                        Depository Institution
-                     </label>
-                     <select
-                        name="depository_institution"
-                        id="depository_institution"
-                        value={formData.depository_institution}
-                        onChange={handleChange}
-                        className="w-full dark:bg-slate-700 dark:border-slate-700 border rounded-lg p-2 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                        required
-                     >
-                        <option value="" disabled>
-                           Select Institution
-                        </option>
-                        <option value="Interbanking">Interbanking</option>
-                        <option value="EasyPaisa">EasyPaisa</option>
-                        <option value="HBL">HBL</option>
-                     </select>
-                  </div>
-                  <div>
                      <label htmlFor="description" className="block text-sm font-medium mb-1">
                         Description
                      </label>
@@ -243,7 +231,7 @@ const TransactionForm = ({ onClose, onTransactionAdded }) => {
                      >
                         Cancel
                      </button>
-                     <button type="submit" className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600">
+                     <button type="submit" className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
                         Add Transaction
                      </button>
                   </div>

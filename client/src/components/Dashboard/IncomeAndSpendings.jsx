@@ -44,7 +44,11 @@ function IncomeAndSpendings() {
             }
 
             let totalExpenses = 0;
-            if (expenseResponse.data && Array.isArray(expenseResponse.data)) {
+            if (expenseResponse.data && expenseResponse.data.expenses && Array.isArray(expenseResponse.data.expenses)) {
+               // Handle nested expenses array from API
+               totalExpenses = expenseResponse.data.expenses.reduce((sum, expense) => sum + expense.amount, 0);
+            } else if (expenseResponse.data && Array.isArray(expenseResponse.data)) {
+               // Fallback for direct array response
                totalExpenses = expenseResponse.data.reduce((sum, expense) => sum + expense.amount, 0);
             }
 

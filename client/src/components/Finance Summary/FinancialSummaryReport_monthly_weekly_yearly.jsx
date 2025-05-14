@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 
-function FinancialSummaryReport_monthly_weekly_yearly({ timeFilter, summaryData }) {
+function FinancialSummaryReport_monthly_weekly_yearly({ summaryData }) {
    const [summaryStats, setSummaryStats] = useState({
       totalIncome: 0,
       totalExpenses: 0,

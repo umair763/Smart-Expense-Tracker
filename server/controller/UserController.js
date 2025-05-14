@@ -6,6 +6,7 @@ import multer from "multer";
 import { OAuth2Client } from "google-auth-library";
 import dotenv from "dotenv";
 import axios from "axios";
+import mongoose from "mongoose";
 
 dotenv.config();
 
@@ -18,9 +19,27 @@ const generateToken = (userId) => {
 };
 
 export const googleSignIn = async (req, res) => {
+	// Start a MongoDB session for transaction
+	const session = await mongoose.startSession();
+
 	try {
+		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+		session.startTransaction({
+			readConcern: "snapshot",
+			writeConcern: { w: "majority" },
+		});
+
+		console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
+
 		const { token } = req.body;
-		if (!token) return res.status(400).json({ message: "Google token is required" });
+		if (!token) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - missing token");
+			session.endSession();
+
+			return res.status(400).json({ message: "Google token is required" });
+		}
 
 		const ticket = await oauthClient.verifyIdToken({
 			idToken: token,
@@ -33,7 +52,8 @@ export const googleSignIn = async (req, res) => {
 		const imageResponse = await axios.get(picture, { responseType: "arraybuffer" });
 		const base64Image = `data:image/jpeg;base64,${Buffer.from(imageResponse.data, "binary").toString("base64")}`;
 
-		let user = await User.findOne({ email });
+		// Use READ COMMITTED for the initial find operation
+		let user = await User.findOne({ email }, null, { readConcern: "majority" });
 
 		if (!user) {
 			user = new User({
@@ -43,8 +63,13 @@ export const googleSignIn = async (req, res) => {
 				password: await bcrypt.hash("tempPassword123", 10),
 			});
 
-			await user.save();
+			// Save the user within the transaction session
+			await user.save({ session });
 		}
+
+		// Commit the transaction
+		await session.commitTransaction();
+		console.log("Transaction committed successfully");
 
 		const jwtToken = generateToken(user._id);
 
@@ -52,10 +77,20 @@ export const googleSignIn = async (req, res) => {
 			message: "Google Sign-In successful",
 			token: jwtToken,
 			user: { name: user.name, email: user.email, image: base64Image },
+			isolationLevel: "REPEATABLE READ (snapshot)",
 		});
 	} catch (error) {
 		console.error("Google Sign-In Error:", error);
+
+		// Abort the transaction if there's an error
+		await session.abortTransaction();
+		console.log("Transaction aborted due to error");
+
 		res.status(500).json({ message: "Failed to authenticate user", error: error.message });
+	} finally {
+		// End the session
+		session.endSession();
+		console.log("Transaction session ended");
 	}
 };
 
@@ -79,15 +114,38 @@ export const registerUser = async (req, res) => {
 			return res.status(400).json({ message: err.message });
 		}
 
+		// Start a MongoDB session for transaction
+		const session = await mongoose.startSession();
+
 		try {
+			// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+			session.startTransaction({
+				readConcern: "snapshot",
+				writeConcern: { w: "majority" },
+			});
+
+			console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
+
 			const { name, email, password } = req.body;
 
 			if (!name || !email || !password) {
+				// Abort the transaction since we're returning early
+				await session.abortTransaction();
+				console.log("Transaction aborted - missing required fields");
+				session.endSession();
+
 				return res.status(400).json({ message: "Email, name, and password are required." });
 			}
 
-			const existingUser = await User.findOne({ email });
+			// Use READ COMMITTED for the initial find operation
+			const existingUser = await User.findOne({ email }, null, { readConcern: "majority" });
+
 			if (existingUser) {
+				// Abort the transaction since we're returning early
+				await session.abortTransaction();
+				console.log("Transaction aborted - user already exists");
+				session.endSession();
+
 				return res.status(400).json({ message: "Email already in use." });
 			}
 
@@ -107,7 +165,12 @@ export const registerUser = async (req, res) => {
 				image: base64Image, // Store as base64 string
 			});
 
-			await newUser.save();
+			// Save the user within the transaction session
+			await newUser.save({ session });
+
+			// Commit the transaction
+			await session.commitTransaction();
+			console.log("Transaction committed successfully");
 
 			const token = generateToken(newUser._id);
 
@@ -120,10 +183,20 @@ export const registerUser = async (req, res) => {
 					email: newUser.email,
 					image: base64Image,
 				},
+				isolationLevel: "REPEATABLE READ (snapshot)",
 			});
 		} catch (error) {
 			console.error("Registration error:", error.message);
+
+			// Abort the transaction if there's an error
+			await session.abortTransaction();
+			console.log("Transaction aborted due to error");
+
 			return res.status(500).json({ message: "Server error. Please try again." });
+		} finally {
+			// End the session
+			session.endSession();
+			console.log("Transaction session ended");
 		}
 	});
 };
@@ -133,7 +206,9 @@ export const loginUser = async (req, res) => {
 	try {
 		const { email, password } = req.body;
 
-		const user = await User.findOne({ email });
+		// Apply READ COMMITTED isolation level for the read operation
+		const user = await User.findOne({ email }, null, { readConcern: "majority" });
+
 		if (!user) {
 			return res.status(401).json({ message: "Invalid email or password" });
 		}
@@ -153,6 +228,7 @@ export const loginUser = async (req, res) => {
 				email: user.email,
 				image: user.image, // This will now be a base64 string if exists
 			},
+			isolationLevel: "READ COMMITTED (majority)",
 		});
 	} catch (error) {
 		console.error("Error during login:", error);
@@ -165,7 +241,8 @@ export const getUserProfile = async (req, res) => {
 	try {
 		const userId = req.userId;
 
-		const user = await User.findById(userId);
+		// Apply READ COMMITTED isolation level
+		const user = await User.findById(userId, null, { readConcern: "majority" });
 
 		if (!user) {
 			return res.status(404).json({ message: "User not found" });
@@ -178,6 +255,7 @@ export const getUserProfile = async (req, res) => {
 				email: user.email,
 				image: user.image, // This will be a base64 string if exists
 			},
+			isolationLevel: "READ COMMITTED (majority)",
 		});
 	} catch (error) {
 		console.error("Error fetching user profile:", error);

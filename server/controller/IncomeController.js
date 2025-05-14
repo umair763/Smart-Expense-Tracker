@@ -4,7 +4,18 @@ import { dbEvents } from "../index.js";
 
 // Add new income
 export const addIncome = async (req, res) => {
+	// Start a MongoDB session for transaction
+	const session = await mongoose.startSession();
+
 	try {
+		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+		session.startTransaction({
+			readConcern: "snapshot",
+			writeConcern: { w: "majority" },
+		});
+
+		console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
+
 		// Log the incoming request for debugging
 		console.log("Income add request received:", {
 			body: req.body,
@@ -28,6 +39,11 @@ export const addIncome = async (req, res) => {
 		if (!id) missingFields.push("id");
 
 		if (missingFields.length > 0) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - missing fields");
+			session.endSession();
+
 			return res.status(400).json({
 				message: "Missing required fields",
 				missingFields,
@@ -38,6 +54,11 @@ export const addIncome = async (req, res) => {
 		// Additional validation for amount
 		const parsedAmount = parseFloat(amount);
 		if (isNaN(parsedAmount) || parsedAmount <= 0) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - invalid amount");
+			session.endSession();
+
 			return res.status(400).json({ message: "Amount must be a positive number" });
 		}
 
@@ -55,14 +76,23 @@ export const addIncome = async (req, res) => {
 		// Validate the income model
 		const validationError = newIncome.validateSync();
 		if (validationError) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - validation error");
+			session.endSession();
+
 			return res.status(400).json({
 				message: "Validation failed",
 				errors: validationError.errors,
 			});
 		}
 
-		// Save the income to the database
-		await newIncome.save();
+		// Save the income to the database within the transaction session
+		await newIncome.save({ session });
+
+		// Commit the transaction
+		await session.commitTransaction();
+		console.log("Transaction committed successfully");
 
 		// Emit event for the notification system : Trigger
 		dbEvents.emit("db_change", {
@@ -72,15 +102,28 @@ export const addIncome = async (req, res) => {
 		});
 
 		// Return a success response
-		return res.status(201).json({ message: "Income added successfully.", income: newIncome });
+		return res.status(201).json({
+			message: "Income added successfully.",
+			income: newIncome,
+			isolationLevel: "REPEATABLE READ (snapshot)",
+		});
 	} catch (error) {
 		console.error("Error adding income:", error);
+
+		// Abort the transaction if there's an error
+		await session.abortTransaction();
+		console.log("Transaction aborted due to error");
+
 		// Ensure we always return JSON
 		return res.status(500).json({
 			message: "Error adding income.",
 			error: error.message,
 			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
 		});
+	} finally {
+		// End the session
+		session.endSession();
+		console.log("Transaction session ended");
 	}
 };
 
@@ -93,13 +136,20 @@ export const getIncomes = async (req, res) => {
 		// Ensure userId is a valid ObjectId
 		const userObjectId = new mongoose.Types.ObjectId(req.userId);
 
-		// Find incomes for this user
-		const incomes = await Income.find({ userId: userObjectId });
+		// Find incomes for this user with READ COMMITTED isolation level
+		const incomes = await Income.find(
+			{ userId: userObjectId },
+			null,
+			{ readConcern: "majority" } // Apply READ COMMITTED isolation level
+		);
 
 		// Log the found incomes
 		console.log(`Found ${incomes.length} income records`);
 
-		res.json({ incomes });
+		res.json({
+			incomes,
+			isolationLevel: "READ COMMITTED (majority)",
+		});
 	} catch (err) {
 		console.error("Error fetching incomes:", err);
 		res.status(500).json({ message: "Failed to fetch incomes", error: err.message });
@@ -115,13 +165,21 @@ export const getIncomeById = async (req, res) => {
 		// Ensure userId is a valid ObjectId
 		const userObjectId = new mongoose.Types.ObjectId(userId);
 
-		const income = await Income.findOne({ _id: id, userId: userObjectId });
+		// Find income with READ COMMITTED isolation level
+		const income = await Income.findOne(
+			{ _id: id, userId: userObjectId },
+			null,
+			{ readConcern: "majority" } // Apply READ COMMITTED isolation level
+		);
 
 		if (!income) {
 			return res.status(404).json({ message: "Income not found" });
 		}
 
-		res.status(200).json({ income });
+		res.status(200).json({
+			income,
+			isolationLevel: "READ COMMITTED (majority)",
+		});
 	} catch (error) {
 		console.error("Error fetching income:", error);
 		res.status(500).json({ error: "Failed to fetch income", message: error.message });
@@ -130,21 +188,42 @@ export const getIncomeById = async (req, res) => {
 
 // Delete income
 export const deleteIncome = async (req, res) => {
+	// Start a MongoDB session for transaction
+	const session = await mongoose.startSession();
+
 	try {
+		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+		session.startTransaction({
+			readConcern: "snapshot",
+			writeConcern: { w: "majority" },
+		});
+
+		console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
+
 		const { id } = req.params;
 		const userId = req.userId;
 
 		// Ensure userId is a valid ObjectId
 		const userObjectId = new mongoose.Types.ObjectId(userId);
 
-		const income = await Income.findOne({ _id: id, userId: userObjectId });
+		// Find the income within the transaction session
+		const income = await Income.findOne({ _id: id, userId: userObjectId }).session(session);
 
 		if (!income) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - income not found");
+			session.endSession();
+
 			return res.status(404).json({ message: "Income not found" });
 		}
 
-		// Delete the income
-		await Income.findByIdAndDelete(id);
+		// Delete the income within the transaction session
+		await Income.findByIdAndDelete(id).session(session);
+
+		// Commit the transaction
+		await session.commitTransaction();
+		console.log("Transaction committed successfully");
 
 		// Emit event for the notification system : Trigger
 		dbEvents.emit("db_change", {
@@ -153,10 +232,22 @@ export const deleteIncome = async (req, res) => {
 			documentId: id,
 		});
 
-		res.json({ message: "Income deleted successfully" });
+		res.json({
+			message: "Income deleted successfully",
+			isolationLevel: "REPEATABLE READ (snapshot)",
+		});
 	} catch (err) {
 		console.error("Error deleting income:", err);
+
+		// Abort the transaction if there's an error
+		await session.abortTransaction();
+		console.log("Transaction aborted due to error");
+
 		res.status(500).json({ message: "Failed to delete income", error: err.message });
+	} finally {
+		// End the session
+		session.endSession();
+		console.log("Transaction session ended");
 	}
 };
 
@@ -166,33 +257,44 @@ export const getIncomeStats = async (req, res) => {
 		const userId = req.userId;
 		const userObjectId = new mongoose.Types.ObjectId(userId);
 
-		// Total income amount
-		const totalIncome = await Income.aggregate([
-			{ $match: { userId: userObjectId } },
-			{ $group: { _id: null, total: { $sum: "$amount" } } },
-		]);
+		// Use READ COMMITTED isolation level for aggregation
+		const options = { readConcern: "majority" };
 
-		// Income by category
-		const incomeByCategory = await Income.aggregate([
-			{ $match: { userId: userObjectId } },
-			{ $group: { _id: "$category", total: { $sum: "$amount" } } },
-			{ $sort: { total: -1 } },
-		]);
+		// Total income amount with READ COMMITTED isolation
+		const totalIncome = await Income.aggregate(
+			[{ $match: { userId: userObjectId } }, { $group: { _id: null, total: { $sum: "$amount" } } }],
+			{ readConcern: "majority" }
+		);
 
-		// Recent income (last 7 days)
+		// Income by category with READ COMMITTED isolation
+		const incomeByCategory = await Income.aggregate(
+			[
+				{ $match: { userId: userObjectId } },
+				{ $group: { _id: "$category", total: { $sum: "$amount" } } },
+				{ $sort: { total: -1 } },
+			],
+			{ readConcern: "majority" }
+		);
+
+		// Recent income (last 7 days) with READ COMMITTED isolation
 		const sevenDaysAgo = new Date();
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 		const sevenDaysAgoStr = sevenDaysAgo.toISOString().split("T")[0];
 
-		const recentIncome = await Income.find({
-			userId: userObjectId,
-			date: { $gte: sevenDaysAgoStr },
-		}).sort({ date: -1, time: -1 });
+		const recentIncome = await Income.find(
+			{
+				userId: userObjectId,
+				date: { $gte: sevenDaysAgoStr },
+			},
+			null,
+			{ readConcern: "majority" }
+		).sort({ date: -1, time: -1 });
 
 		res.json({
 			totalIncome: totalIncome.length > 0 ? totalIncome[0].total : 0,
 			incomeByCategory,
 			recentIncome,
+			isolationLevel: "READ COMMITTED (majority)",
 		});
 	} catch (error) {
 		console.error("Error fetching income statistics:", error);
@@ -202,7 +304,18 @@ export const getIncomeStats = async (req, res) => {
 
 // Update income
 export const updateIncome = async (req, res) => {
+	// Start a MongoDB session for transaction
+	const session = await mongoose.startSession();
+
 	try {
+		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
+		session.startTransaction({
+			readConcern: "snapshot",
+			writeConcern: { w: "majority" },
+		});
+
+		console.log("Started transaction with REPEATABLE READ isolation level (snapshot)");
+
 		const { id } = req.params;
 		const userId = req.userId;
 		const updateData = req.body;
@@ -213,12 +326,17 @@ export const updateIncome = async (req, res) => {
 		console.log("Request path:", req.path);
 		console.log("Full URL:", req.originalUrl);
 
-		// Find the income and verify it belongs to the user
-		const income = await Income.findOne({ _id: id, userId });
+		// Find the income and verify it belongs to the user within the transaction session
+		const income = await Income.findOne({ _id: id, userId }).session(session);
 
 		console.log("Found income to update:", income);
 
 		if (!income) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - income not found");
+			session.endSession();
+
 			return res.status(404).json({ message: "Income not found or you don't have permission to update it" });
 		}
 
@@ -232,6 +350,11 @@ export const updateIncome = async (req, res) => {
 		if (!updateData.id) missingFields.push("id");
 
 		if (missingFields.length > 0) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - missing fields");
+			session.endSession();
+
 			return res.status(400).json({
 				message: "Missing required fields",
 				missingFields,
@@ -248,16 +371,16 @@ export const updateIncome = async (req, res) => {
 			"Dividends",
 			"Rental",
 			"YouTube",
-			"Trading",
-			"Interest",
-			"Royalties",
-			"Commission",
-			"Consulting",
 			"Gifts",
-			"Others",
+			"Miscellaneous",
 		];
 
 		if (!validCategories.includes(updateData.category)) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - invalid category");
+			session.endSession();
+
 			return res.status(400).json({
 				message: `Invalid category. Must be one of: ${validCategories.join(", ")}`,
 				validCategories,
@@ -267,17 +390,27 @@ export const updateIncome = async (req, res) => {
 		// Validate amount is a positive number
 		const parsedAmount = parseFloat(updateData.amount);
 		if (isNaN(parsedAmount) || parsedAmount <= 0) {
+			// Abort the transaction since we're returning early
+			await session.abortTransaction();
+			console.log("Transaction aborted - invalid amount");
+			session.endSession();
+
 			return res.status(400).json({ message: "Amount must be a positive number" });
 		}
 
-		// Ensure amount is a number in the update data
+		// Update with parsed amount
 		updateData.amount = parsedAmount;
 
-		// Update the income
+		// Update the income within the transaction session
 		const updatedIncome = await Income.findByIdAndUpdate(id, updateData, {
 			new: true,
 			runValidators: true,
+			session, // Pass the session to update operation
 		});
+
+		// Commit the transaction
+		await session.commitTransaction();
+		console.log("Transaction committed successfully");
 
 		// Emit event for the notification system : Trigger
 		dbEvents.emit("db_change", {
@@ -286,13 +419,34 @@ export const updateIncome = async (req, res) => {
 			documentId: id,
 		});
 
-		console.log("Income updated successfully");
 		res.json({
 			message: "Income updated successfully",
 			income: updatedIncome,
+			isolationLevel: "REPEATABLE READ (snapshot)",
 		});
-	} catch (err) {
-		console.error("Error updating income:", err);
-		res.status(500).json({ message: "Failed to update income", error: err.message });
+	} catch (error) {
+		console.error("Error updating income:", error);
+
+		// Abort the transaction if there's an error
+		await session.abortTransaction();
+		console.log("Transaction aborted due to error");
+
+		// Check for validation errors
+		if (error.name === "ValidationError") {
+			const validationErrors = {};
+			for (const field in error.errors) {
+				validationErrors[field] = error.errors[field].message;
+			}
+			return res.status(400).json({
+				message: "Validation failed",
+				errors: validationErrors,
+			});
+		}
+
+		res.status(500).json({ message: "Failed to update income", error: error.message });
+	} finally {
+		// End the session
+		session.endSession();
+		console.log("Transaction session ended");
 	}
 };
