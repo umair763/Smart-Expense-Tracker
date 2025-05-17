@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import axios from 'axios';
 import { FiRefreshCw, FiSearch } from 'react-icons/fi';
-import { RiEditLine, RiDeleteBinLine } from 'react-icons/ri';
+import { RiEditLine, RiDeleteBinLine, RiFilterLine, RiCloseLine } from 'react-icons/ri';
 import { IoFilterOutline } from 'react-icons/io5';
 import { ThemeContext } from '../../app/context/ThemeContext';
-import { useContext } from 'react';
+import { io } from 'socket.io-client';
 
 // Import categories from the expense form
 const categories = {
@@ -49,6 +49,8 @@ function ExpensesRecord() {
    const [refreshing, setRefreshing] = useState(false);
    const [searchTerm, setSearchTerm] = useState('');
    const { isDarkMode } = useContext(ThemeContext);
+   const [notification, setNotification] = useState(null);
+   const [socket, setSocket] = useState(null);
 
    const [formData, setFormData] = useState({
       item: '',
@@ -130,7 +132,8 @@ function ExpensesRecord() {
       } catch (error) {
          console.error('Error deleting expense:', error);
          console.error('Error details:', error.response ? error.response.data : 'No response data');
-         alert('Failed to delete expense. Please try again.');
+         // Remove alert - replaced by notification system
+         setError('Failed to delete expense. Please try again.');
       }
    };
 
@@ -170,7 +173,7 @@ function ExpensesRecord() {
 
          // Validate the form data
          if (!formData.category || !formData.item || !formData.amount || !formData.recordedDate) {
-            alert('All fields are required.');
+            setError('All fields are required.');
             return;
          }
 
@@ -204,15 +207,16 @@ function ExpensesRecord() {
             if (error.response.data.errors) {
                const errorDetails = Object.entries(error.response.data.errors)
                   .map(([field, message]) => `${field}: ${message}`)
-                  .join('\n');
+                  .join(', ');
 
-               errorMessage = `Validation errors:\n${errorDetails}`;
+               errorMessage = `Validation errors: ${errorDetails}`;
             } else if (error.response.data.message) {
                errorMessage = error.response.data.message;
             }
          }
 
-         alert(errorMessage);
+         // Remove alert - replaced by notification system
+         setError(errorMessage);
       }
    };
 
@@ -255,6 +259,51 @@ function ExpensesRecord() {
    // Calculate the pagination
    const totalPages = Math.ceil(filteredExpenses.length / recordsPerPage);
    const currentRecords = filteredExpenses.slice((currentPage - 1) * recordsPerPage, currentPage * recordsPerPage);
+
+   // Connect to Socket.IO server for MongoDB notifications
+   useEffect(() => {
+      const newSocket = io('http://localhost:5000');
+      setSocket(newSocket);
+
+      // Socket connection events
+      newSocket.on('connect', () => {
+         console.log('Connected to notification server');
+      });
+
+      newSocket.on('disconnect', () => {
+         console.log('Disconnected from notification server');
+      });
+
+      return () => {
+         newSocket.disconnect();
+      };
+   }, []);
+
+   // Listen for notifications related to expenses
+   useEffect(() => {
+      if (!socket) return;
+
+      socket.on('notification', (data) => {
+         // Only show notifications related to expenses
+         if (data.collection === 'expenses') {
+            setNotification(data);
+
+            // Auto-dismiss notification after 5 seconds (increased from 4)
+            setTimeout(() => {
+               setNotification(null);
+            }, 5000);
+
+            // Refresh expenses list if this was an expense operation
+            if (['insert', 'update', 'delete'].includes(data.type)) {
+               fetchExpenses();
+            }
+         }
+      });
+
+      return () => {
+         socket.off('notification');
+      };
+   }, [socket, fetchExpenses]);
 
    if (isLoading) {
       return (
@@ -304,7 +353,43 @@ function ExpensesRecord() {
    }
 
    return (
-      <div className="p-6 bg-transparent text-black dark:text-white">
+      <div className={`w-full p-5 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>
+         {/* Notification Banner */}
+         {notification && (
+            <div
+               className={`mb-4 p-3 rounded-lg shadow-md transition-all duration-300 animate-fade-in
+               ${
+                  notification.type === 'insert'
+                     ? 'bg-green-100 border-green-500 text-green-900'
+                     : notification.type === 'update'
+                     ? 'bg-blue-100 border-blue-500 text-blue-900'
+                     : notification.type === 'delete'
+                     ? 'bg-red-100 border-red-500 text-red-900'
+                     : 'bg-yellow-100 border-yellow-500 text-yellow-900'
+               }`}
+            >
+               <div className="flex justify-between items-center">
+                  <div>
+                     <div className="font-bold">
+                        Database Operation{' '}
+                        {notification.transactionState
+                           ? `| Transaction ${notification.transactionState}`
+                           : `| REPEATABLE READ`}
+                     </div>
+                     {notification.executionTime && (
+                        <div className="text-sm">MongoDB executed in {notification.executionTime}ms</div>
+                     )}
+                  </div>
+                  <button
+                     onClick={() => setNotification(null)}
+                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                     <RiCloseLine size={20} />
+                  </button>
+               </div>
+            </div>
+         )}
+
          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
             <div>
                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-indigo-500 to-blue-600 bg-clip-text text-transparent">

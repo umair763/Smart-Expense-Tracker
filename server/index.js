@@ -42,11 +42,30 @@ io.on("connection", (socket) => {
 dbEvents.on("db_change", (changeData) => {
 	console.log(`Database change detected:`, changeData);
 
+	// Create notification message including MongoDB execution time and transaction state
+	let notificationMessage = `Record ${changeData.operation} on ${changeData.collection}`;
+	
+	// Add execution time and transaction state if available
+	if (changeData.executionTime) {
+		notificationMessage += ` (MongoDB executed in ${changeData.executionTime}ms)`;
+	}
+	
+	if (changeData.transactionState) {
+		notificationMessage += `. MongoDB transaction is ${changeData.transactionState}`;
+	}
+	
+	// Include error information if available
+	if (changeData.error) {
+		notificationMessage += `. Error: ${changeData.error}`;
+	}
+
 	// Emit to all connected clients
 	io.emit("notification", {
 		type: changeData.operation,
 		collection: changeData.collection,
-		message: `Record ${changeData.operation} on ${changeData.collection}`,
+		message: notificationMessage,
+		executionTime: changeData.executionTime,
+		transactionState: changeData.transactionState,
 		timestamp: new Date(),
 	});
 });

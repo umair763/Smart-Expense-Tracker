@@ -107,6 +107,7 @@ export const getTransactions = async (req, res) => {
 export const createTransaction = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -160,12 +161,16 @@ export const createTransaction = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Emit event for the notification system : Trigger
 		dbEvents.emit("db_change", {
 			operation: "insert",
 			collection: "transactions",
 			documentId: newTransaction._id,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		console.log("Transaction created successfully:", newTransaction._id);
@@ -173,19 +178,33 @@ export const createTransaction = async (req, res) => {
 			message: "Transaction created successfully",
 			transaction: newTransaction,
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (error) {
 		console.error("Error creating transaction:", error);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+
+		// Emit event for the notification system : Trigger
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "transactions",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
 		// Send more details about the error to help troubleshoot
 		res.status(500).json({
 			message: "Failed to create transaction",
 			error: error.message,
 			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
 		});
 	} finally {
 		// End the session
@@ -198,6 +217,7 @@ export const createTransaction = async (req, res) => {
 export const updateTransaction = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -262,12 +282,16 @@ export const updateTransaction = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
-		// Emit event for the notification system : Trigger
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "update",
 			collection: "transactions",
-			documentId: transactionId,
+			documentId: updatedTransaction._id,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		console.log("Transaction updated successfully");
@@ -275,18 +299,32 @@ export const updateTransaction = async (req, res) => {
 			message: "Transaction updated successfully",
 			transaction: updatedTransaction,
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (error) {
 		console.error("Error updating transaction:", error);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+		
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "update",
+			collection: "transactions",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
 		res.status(500).json({
 			message: "Failed to update transaction",
 			error: error.message,
 			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
 		});
 	} finally {
 		// End the session
@@ -299,6 +337,7 @@ export const updateTransaction = async (req, res) => {
 export const deleteTransaction = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -352,30 +391,48 @@ export const deleteTransaction = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
-		// Emit event for the notification system : Trigger
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "delete",
 			collection: "transactions",
 			documentId: transactionId,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		console.log("Transaction deleted successfully");
 		res.status(200).json({
 			message: "Transaction deleted successfully",
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (error) {
 		console.error("Error deleting transaction:", error);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+		
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "transactions",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
 		res.status(500).json({
 			message: "Failed to delete transaction",
 			error: error.message,
 			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
 		});
 	} finally {
 		// End the session

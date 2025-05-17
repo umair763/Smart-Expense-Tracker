@@ -6,6 +6,7 @@ import mongoose from "mongoose";
 export const addExpense = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -48,11 +49,15 @@ export const addExpense = async (req, res) => {
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
 
-		// Emit event for the notification system : Trigger
+		const executionTime = Date.now() - startTime; // Calculate execution time
+
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "insert",
 			collection: "expenses",
 			documentId: newExpense._id,
+			executionTime: executionTime,
+			transactionState: "committed",
 		});
 
 		// Return a success response
@@ -60,15 +65,34 @@ export const addExpense = async (req, res) => {
 			message: "Expense added successfully.",
 			expense: newExpense,
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed",
 		});
 	} catch (error) {
 		console.error("Error adding expense:", error);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
 
-		res.status(500).json({ message: "Error adding expense." });
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "expenses",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
+
+		// Send more details about the error to help troubleshoot
+		res.status(500).json({
+			message: "Failed to add expense",
+			error: error.message,
+			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
 	} finally {
 		// End the session
 		session.endSession();
@@ -130,6 +154,7 @@ export const getExpenseById = async (req, res) => {
 export const deleteExpense = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -169,26 +194,48 @@ export const deleteExpense = async (req, res) => {
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
 
-		// Emit event for the notification system : Trigger
+		const executionTime = Date.now() - startTime; // Calculate execution time
+
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "delete",
 			collection: "expenses",
 			documentId: id,
+			executionTime: executionTime,
+			transactionState: "committed",
 		});
 
 		console.log("Expense deleted successfully");
 		res.json({
 			message: "Expense deleted successfully",
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed",
 		});
 	} catch (err) {
 		console.error("Error deleting expense:", err);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
 
-		res.status(500).json({ message: "Failed to delete expense", error: err.message });
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "expenses",
+			error: err.message,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
+
+		res.status(500).json({
+			message: "Failed to delete expense",
+			error: err.message,
+			stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
 	} finally {
 		// End the session
 		session.endSession();
@@ -200,6 +247,7 @@ export const deleteExpense = async (req, res) => {
 export const updateExpense = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -292,11 +340,15 @@ export const updateExpense = async (req, res) => {
 			await session.commitTransaction();
 			console.log("Transaction committed successfully");
 
-			// Emit event for the notification system : Trigger
+			const executionTime = Date.now() - startTime; // Calculate execution time
+
+			// Emit event for the notification system
 			dbEvents.emit("db_change", {
 				operation: "update",
 				collection: "expenses",
 				documentId: id,
+				executionTime: executionTime,
+				transactionState: "committed",
 			});
 
 			console.log("Expense updated successfully");
@@ -304,6 +356,8 @@ export const updateExpense = async (req, res) => {
 				message: "Expense updated successfully",
 				expense: updatedExpense,
 				isolationLevel: "REPEATABLE READ (snapshot)",
+				executionTime: executionTime,
+				transactionState: "committed",
 			});
 		} catch (dbError) {
 			console.error("Database error:", dbError);
@@ -335,12 +389,28 @@ export const updateExpense = async (req, res) => {
 		}
 	} catch (err) {
 		console.error("Error updating expense:", err);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
 
-		res.status(500).json({ message: "Failed to update expense", error: err.message });
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "update",
+			collection: "expenses",
+			error: err.message,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
+
+		res.status(500).json({
+			message: "Failed to update expense",
+			error: err.message,
+			stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted",
+		});
 	} finally {
 		// End the session
 		session.endSession();

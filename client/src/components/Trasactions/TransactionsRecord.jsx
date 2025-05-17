@@ -3,6 +3,7 @@ import axios from 'axios';
 import { FiRefreshCw, FiSearch } from 'react-icons/fi';
 import { RiEditLine, RiDeleteBinLine, RiFilterLine, RiCloseLine } from 'react-icons/ri';
 import { ThemeContext } from '../../app/context/ThemeContext';
+import { io } from 'socket.io-client';
 
 const TransactionRecord = () => {
    const [transactions, setTransactions] = useState([]);
@@ -34,6 +35,53 @@ const TransactionRecord = () => {
       description: '',
       _id: '',
    });
+   const [notification, setNotification] = useState(null);
+   const [socket, setSocket] = useState(null);
+
+   // Connect to Socket.IO server for MongoDB notifications
+   useEffect(() => {
+      const newSocket = io('http://localhost:5000');
+      setSocket(newSocket);
+
+      // Socket connection events
+      newSocket.on('connect', () => {
+         console.log('Connected to notification server');
+      });
+
+      newSocket.on('disconnect', () => {
+         console.log('Disconnected from notification server');
+      });
+
+      return () => {
+         newSocket.disconnect();
+      };
+   }, []);
+
+   // Listen for notifications related to transactions
+   useEffect(() => {
+      if (!socket) return;
+
+      socket.on('notification', (data) => {
+         // Only show notifications related to transactions
+         if (data.collection === 'transactions') {
+            setNotification(data);
+
+            // Auto-dismiss notification after 5 seconds (increased from 4)
+            setTimeout(() => {
+               setNotification(null);
+            }, 5000);
+
+            // Refresh transactions list if this was a transaction operation
+            if (['insert', 'update', 'delete'].includes(data.type)) {
+               refreshTransactions();
+            }
+         }
+      });
+
+      return () => {
+         socket.off('notification');
+      };
+   }, [socket]);
 
    // Memoize fetchTransactions to prevent unnecessary re-renders
    const fetchTransactions = useCallback(
@@ -224,7 +272,8 @@ const TransactionRecord = () => {
       } catch (error) {
          console.error('Error updating transaction:', error);
          console.error('Error details:', error.response ? error.response.data : 'No response data');
-         alert('Failed to update transaction. Please try again.');
+         // Remove alert - replaced by notification system
+         setError('Failed to update transaction. Please try again.');
       }
    };
 
@@ -255,7 +304,8 @@ const TransactionRecord = () => {
       } catch (error) {
          console.error('Error deleting transaction:', error);
          console.error('Error details:', error.response ? error.response.data : 'No response data');
-         alert('Failed to delete transaction. Please try again.');
+         // Remove alert - replaced by notification system
+         setError('Failed to delete transaction. Please try again.');
       }
    };
 
@@ -359,15 +409,60 @@ const TransactionRecord = () => {
    );
 
    return (
-      <div className="p-6 bg-transparent text-black dark:text-white">
-         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
-            <div>
-               <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-purple-500 to-indigo-600 bg-clip-text text-transparent">
-                  Transactions
-               </h1>
-               <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">
-                  {filteredTransactions.length} {filteredTransactions.length === 1 ? 'record' : 'records'} found
-               </p>
+      <div className={`w-full p-5 ${isDarkMode ? 'bg-gray-900 text-white' : 'bg-gray-100'}`}>
+         {/* Notification Banner */}
+         {notification && (
+            <div
+               className={`mb-4 p-3 rounded-lg shadow-md transition-all duration-300 animate-fade-in
+               ${
+                  notification.type === 'insert'
+                     ? 'bg-green-100 border-green-500 text-green-900'
+                     : notification.type === 'update'
+                     ? 'bg-blue-100 border-blue-500 text-blue-900'
+                     : notification.type === 'delete'
+                     ? 'bg-red-100 border-red-500 text-red-900'
+                     : 'bg-yellow-100 border-yellow-500 text-yellow-900'
+               }`}
+            >
+               <div className="flex justify-between items-center">
+                  <div>
+                     <div className="font-bold">
+                        Database Operation{' '}
+                        {notification.transactionState
+                           ? `| Transaction ${notification.transactionState}`
+                           : `| REPEATABLE READ`}
+                     </div>
+                     {notification.executionTime && (
+                        <div className="text-sm">MongoDB executed in {notification.executionTime}ms</div>
+                     )}
+                  </div>
+                  <button
+                     onClick={() => setNotification(null)}
+                     className="text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                     <RiCloseLine size={20} />
+                  </button>
+               </div>
+            </div>
+         )}
+
+         {/* Page Title and Filters */}
+         <div className="mb-4 flex flex-col md:flex-row justify-between items-start md:items-center">
+            <div className="flex items-center mb-4 md:mb-0">
+               <h2 className={`text-2xl font-bold ${isDarkMode ? 'text-white' : 'text-gray-800'}`}>
+                  Transaction Records
+               </h2>
+               <button
+                  onClick={handleRefresh}
+                  className={`ml-4 p-2 rounded-full ${
+                     isDarkMode
+                        ? 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                        : 'bg-white text-gray-700 hover:bg-gray-200'
+                  } 
+                    ${refreshing ? 'animate-spin' : ''}`}
+               >
+                  <FiRefreshCw className="h-5 w-5" />
+               </button>
             </div>
 
             <div className="flex items-center gap-3 w-full sm:w-auto">
@@ -381,15 +476,6 @@ const TransactionRecord = () => {
                   />
                   <FiSearch className="absolute left-3 top-2.5 text-gray-400" size={18} />
                </div>
-
-               <button
-                  onClick={handleRefresh}
-                  className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/20 transition-colors"
-                  title="Refresh Data"
-                  disabled={refreshing || loading}
-               >
-                  <FiRefreshCw className={`h-5 w-5 ${refreshing ? 'animate-spin' : ''}`} />
-               </button>
             </div>
          </div>
 

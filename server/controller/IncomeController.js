@@ -6,6 +6,7 @@ import { dbEvents } from "../index.js";
 export const addIncome = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -93,12 +94,16 @@ export const addIncome = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
-		// Emit event for the notification system : Trigger
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "insert",
 			collection: "incomes",
 			documentId: newIncome._id,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		// Return a success response
@@ -106,19 +111,33 @@ export const addIncome = async (req, res) => {
 			message: "Income added successfully.",
 			income: newIncome,
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (error) {
 		console.error("Error adding income:", error);
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+		
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "insert",
+			collection: "incomes",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
 		// Ensure we always return JSON
 		return res.status(500).json({
 			message: "Error adding income.",
 			error: error.message,
 			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
 		});
 	} finally {
 		// End the session
@@ -190,6 +209,7 @@ export const getIncomeById = async (req, res) => {
 export const deleteIncome = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -224,26 +244,48 @@ export const deleteIncome = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
-		// Emit event for the notification system : Trigger
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "delete",
 			collection: "incomes",
 			documentId: id,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		res.json({
 			message: "Income deleted successfully",
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (err) {
 		console.error("Error deleting income:", err);
-
+		const executionTime = Date.now() - startTime; // Calculate execution time
+		
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+		
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "delete",
+			collection: "incomes",
+			error: err.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
-		res.status(500).json({ message: "Failed to delete income", error: err.message });
+		res.status(500).json({
+			message: "Failed to delete income",
+			error: err.message,
+			stack: process.env.NODE_ENV === "development" ? err.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 	} finally {
 		// End the session
 		session.endSession();
@@ -306,6 +348,7 @@ export const getIncomeStats = async (req, res) => {
 export const updateIncome = async (req, res) => {
 	// Start a MongoDB session for transaction
 	const session = await mongoose.startSession();
+	const startTime = Date.now(); // Add timestamp for performance tracking
 
 	try {
 		// Start transaction with readConcern "snapshot" for REPEATABLE READ isolation
@@ -411,39 +454,49 @@ export const updateIncome = async (req, res) => {
 		// Commit the transaction
 		await session.commitTransaction();
 		console.log("Transaction committed successfully");
+		
+		const executionTime = Date.now() - startTime; // Calculate execution time
 
-		// Emit event for the notification system : Trigger
+		// Emit event for the notification system
 		dbEvents.emit("db_change", {
 			operation: "update",
 			collection: "incomes",
 			documentId: id,
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 
 		res.json({
 			message: "Income updated successfully",
 			income: updatedIncome,
 			isolationLevel: "REPEATABLE READ (snapshot)",
+			executionTime: executionTime,
+			transactionState: "committed"
 		});
 	} catch (error) {
 		console.error("Error updating income:", error);
-
+		const executionTime = Date.now() - startTime; // Calculate execution time
+		
 		// Abort the transaction if there's an error
 		await session.abortTransaction();
 		console.log("Transaction aborted due to error");
+		
+		// Emit event for the notification system
+		dbEvents.emit("db_change", {
+			operation: "update",
+			collection: "incomes",
+			error: error.message,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 
-		// Check for validation errors
-		if (error.name === "ValidationError") {
-			const validationErrors = {};
-			for (const field in error.errors) {
-				validationErrors[field] = error.errors[field].message;
-			}
-			return res.status(400).json({
-				message: "Validation failed",
-				errors: validationErrors,
-			});
-		}
-
-		res.status(500).json({ message: "Failed to update income", error: error.message });
+		res.status(500).json({
+			message: "Failed to update income",
+			error: error.message,
+			stack: process.env.NODE_ENV === "development" ? error.stack : undefined,
+			executionTime: executionTime,
+			transactionState: "aborted"
+		});
 	} finally {
 		// End the session
 		session.endSession();

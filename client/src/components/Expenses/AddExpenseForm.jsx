@@ -103,7 +103,6 @@ const AddExpenseForm = ({ onClose, onSubmit }) => {
 
          if (response.ok) {
             console.log('Expense added successfully', data);
-            alert('Expense added successfully');
 
             handleClose(); // Use handleClose instead of onClose directly
          } else {

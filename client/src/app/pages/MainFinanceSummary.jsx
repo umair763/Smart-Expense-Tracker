@@ -158,7 +158,6 @@ function MainFinanceSummary() {
 
                {/* Right Column - Takes 1 column */}
                <div className="space-y-6">
-
                   {/* Financial Summary Graph */}
                   <div className="card backdrop-blur-md">
                      <FinancialSummaryGraph_monthly_weekly_yearly summaryData={summaryData} />
@@ -166,10 +165,10 @@ function MainFinanceSummary() {
                </div>
             </div>
          )}
-                  {/* Financial Summary Report */}
-                  <div className="card backdrop-blur-md">
-                     <FinancialSummaryReport_monthly_weekly_yearly summaryData={summaryData} />
-                  </div>
+         {/* Financial Summary Report */}
+         <div className="card backdrop-blur-md">
+            <FinancialSummaryReport_monthly_weekly_yearly summaryData={summaryData} />
+         </div>
       </div>
    );
 }
