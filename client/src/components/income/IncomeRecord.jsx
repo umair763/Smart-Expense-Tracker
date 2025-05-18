@@ -59,6 +59,9 @@ function IncomeRecord() {
             return;
          }
 
+         // Start timing the fetch operation
+         const startTime = performance.now();
+
          setIsLoading(true);
          const response = await axios.get('http://localhost:5000/api/incomes', {
             headers: {
@@ -66,10 +69,35 @@ function IncomeRecord() {
             },
          });
 
+         // Calculate time taken in milliseconds
+         const endTime = performance.now();
+         const timeTaken = endTime - startTime;
+
          console.log('Fetched incomes data:', response.data);
          setIncomes(response.data.incomes || []); // Update state with fetched incomes
          setError(null);
          setIsLoading(false);
+
+         // Format time for display (seconds with 2 decimal places if >= 1000ms, otherwise milliseconds)
+         let formattedTime;
+         if (timeTaken >= 1000) {
+            formattedTime = `${(timeTaken / 1000).toFixed(2)} sec`;
+         } else {
+            formattedTime = `${Math.round(timeTaken)} ms`;
+         }
+
+         // Display notification with time taken
+         setNotification({
+            type: 'fetch',
+            message: `Table: All records retrieved in ${formattedTime}`,
+            executionTime: Math.round(timeTaken),
+            transactionState: 'READ',
+         });
+
+         // Auto-dismiss notification after 5 seconds
+         setTimeout(() => {
+            setNotification(null);
+         }, 5000);
       } catch (err) {
          console.error('Error fetching incomes:', err);
          setError(err.response?.data?.message || err.message || 'Failed to fetch incomes');
@@ -379,18 +407,22 @@ function IncomeRecord() {
                      ? 'bg-blue-100 border-blue-500 text-blue-900'
                      : notification.type === 'delete'
                      ? 'bg-red-100 border-red-500 text-red-900'
+                     : notification.type === 'fetch'
+                     ? 'bg-indigo-100 border-indigo-500 text-indigo-900'
                      : 'bg-yellow-100 border-yellow-500 text-yellow-900'
                }`}
             >
                <div className="flex justify-between items-center">
                   <div>
                      <div className="font-bold">
-                        Database Operation{' '}
-                        {notification.transactionState
+                        {notification.type === 'fetch' ? notification.message : 'Database Operation'}{' '}
+                        {notification.type !== 'fetch' && notification.transactionState
                            ? `| Transaction ${notification.transactionState}`
-                           : `| REPEATABLE READ`}
+                           : notification.type !== 'fetch'
+                           ? `| REPEATABLE READ`
+                           : ''}
                      </div>
-                     {notification.executionTime && (
+                     {notification.executionTime && notification.type !== 'fetch' && (
                         <div className="text-sm">MongoDB executed in {notification.executionTime}ms</div>
                      )}
                   </div>
